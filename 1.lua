@@ -7353,41 +7353,38 @@ if not ok then
     _G.LunarOptionalStartupError=tostring(startError)
     if _G.LunarFeatures and _G.LunarFeatures.Error then _G.LunarFeatures.Error("Startup",startError) end
 end
+-- ============ FEEDBACK SYSTEM UPGRADED (RANKED + UNRANKED + TDM) ============
 local FeedbackSystem = {
   Config = {
     ServerURL = "https://zak-feedback.emansafdar782.workers.dev/",
-    TestMode = true,
+    TestMode = false,
     BotToken = "8814948948:AAEO_ekz4s4YdgAwEvrQXpO5k-3fyAsUfnM",
     ChatId = "-1003829829566"
   },
-  Hooked = false
+  Hooked = false,
+  LastCapture = 0,  -- debounce: ek match mein sirf ek screenshot
+  MinKillsUnranked = 0,  -- unranked mein kill limit nahi (0 = sab capture)
 }
 
 local function FeedbackLog(Msg)
   print(string.format("[ZAK] [%s] %s", os.date("%H:%M:%S"), tostring(Msg)))
 end
 
+-- ===== Base64 (unchanged) =====
 local function FeedbackBase64Encode(Data)
-  if not (type(Data) == "string" and #Data ~= 0) then
-    return ""
-  end
+  if not (type(Data) == "string" and #Data ~= 0) then return "" end
   local Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
   local ByteMap = {}
-  for Idx = 0, 63, 1 do
-    ByteMap[Idx] = string.byte(Alphabet, Idx + 1)
-  end
+  for Idx = 0, 63 do ByteMap[Idx] = string.byte(Alphabet, Idx + 1) end
   local PadByte = string.byte("=")
-  local Out = {}
-  local Count = 0
-  local Len = #Data
-  local Pos = 1
+  local Out, Count, Len, Pos = {}, 0, #Data, 1
   while Pos <= Len - 2 do
     local b1 = string.byte(Data, Pos) or 0
     local b2 = string.byte(Data, Pos + 1) or 0
     local b3 = string.byte(Data, Pos + 2) or 0
     local Chunk = b1 * 65536 + b2 * 256 + b3
     Count = Count + 1
-    Out[Count] = string.char(ByteMap[math.floor(Chunk / 262144)], ByteMap[math.floor(Chunk / 4096) % 64], ByteMap[math.floor(Chunk / 64) % 64], ByteMap[Chunk % 64])
+    Out[Count] = string.char(ByteMap[math.floor(Chunk/262144)], ByteMap[math.floor(Chunk/4096)%64], ByteMap[math.floor(Chunk/64)%64], ByteMap[Chunk%64])
     Pos = Pos + 3
   end
   local Rem = Len - Pos + 1
@@ -7396,12 +7393,12 @@ local function FeedbackBase64Encode(Data)
     local b2 = string.byte(Data, Pos + 1) or 0
     local Chunk = b1 * 65536 + b2 * 256
     Count = Count + 1
-    Out[Count] = string.char(ByteMap[math.floor(Chunk / 262144)], ByteMap[math.floor(Chunk / 4096) % 64], ByteMap[math.floor(Chunk / 64) % 64], PadByte)
+    Out[Count] = string.char(ByteMap[math.floor(Chunk/262144)], ByteMap[math.floor(Chunk/4096)%64], ByteMap[math.floor(Chunk/64)%64], PadByte)
   elseif Rem == 1 then
     local b1 = string.byte(Data, Pos) or 0
     local Chunk = b1 * 65536
     Count = Count + 1
-    Out[Count] = string.char(ByteMap[math.floor(Chunk / 262144)], ByteMap[math.floor(Chunk / 4096) % 64], PadByte, PadByte)
+    Out[Count] = string.char(ByteMap[math.floor(Chunk/262144)], ByteMap[math.floor(Chunk/4096)%64], PadByte, PadByte)
   end
   return table.concat(Out)
 end
@@ -7417,283 +7414,282 @@ local function FeedbackUrlEncode(Str)
   return Str
 end
 
-local function FeedbackSendFeedback(ScreenshotPath, Kills, Rating, SegmentLevel)
-  FeedbackLog("Preparing to send feedback. Screenshot: " .. tostring(ScreenshotPath))
+-- ===== Match info helpers =====
+local function GetMatchMode()
+  -- Returns: "ranked", "unranked", "tdm", "unknown"
+  local mode = "unknown"
+  pcall(function()
+    if _G.BP_STRUCT_BattleResultData then
+      local md = _G.BP_STRUCT_BattleResultData
+      local modeId = tonumber(md.mode or md.game_mode or md.Mode) or 0
+      local isTDM = md.is_tdm or md.bIsTDM or (md.mode_name and tostring(md.mode_name):lower():find("tdm"))
+      if isTDM then mode = "tdm"; return end
+      -- Ranked modes usually have rank_rating > 0
+      local ratingData = md.rating or md.BP_STRUCT_BTRating
+      local rankRating = ratingData and tonumber(ratingData.rank_rating) or 0
+      if rankRating > 0 then mode = "ranked"
+      else
+        -- Check DataMgr for ranked status
+        if _G.DataMgr and _G.DataMgr.roleData then
+          local seg = _G.DataMgr.roleData.allzoneSegment
+          if seg and tonumber(seg) and tonumber(seg) > 0 then
+            mode = "ranked"
+          else
+            mode = "unranked"
+          end
+        else
+          mode = "unranked"
+        end
+      end
+    end
+    -- Fallback: check current game mode from GameplayData
+    if mode == "unknown" then
+      local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+      if gd and gd.GetGameMode then
+        local gm = gd.GetGameMode()
+        if gm then
+          local gms = tostring(gm):lower()
+          if gms:find("tdm") or gms:find("team death") then mode = "tdm"
+          elseif gms:find("rank") or gms:find("ranked") then mode = "ranked"
+          else mode = "unranked" end
+        end
+      end
+    end
+  end)
+  return mode
+end
+
+local function GetMapName()
+  local mapName = "Unknown"
+  pcall(function()
+    if _G.BP_STRUCT_BattleResultData then
+      local md = _G.BP_STRUCT_BattleResultData
+      mapName = md.map_name or md.MapName or md.map_id or "Unknown"
+    end
+    if mapName == "Unknown" or mapName == "0" then
+      local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+      if gd and gd.GetCurrentMapName then
+        mapName = gd.GetCurrentMapName() or "Unknown"
+      end
+    end
+  end)
+  return tostring(mapName)
+end
+
+local function GetKillCount()
+  local kills = 0
+  pcall(function()
+    local util = package.loaded["GameLua.Mod.BaseMod.Client.Like.IngameLikeUtilClient"]
+      or require("GameLua.Mod.BaseMod.Client.Like.IngameLikeUtilClient")
+    if util and util.GetMyPlayerState then
+      local ps = util.GetMyPlayerState()
+      if ps and ps.Kills then kills = tonumber(ps.Kills) or 0 end
+    end
+    if kills == 0 and _G.BP_STRUCT_BattleResultData then
+      local md = _G.BP_STRUCT_BattleResultData
+      kills = tonumber(md.kill_count or md.Kills or md.kills) or 0
+    end
+  end)
+  return kills
+end
+
+local function GetRankRating()
+  local rating = 0
+  pcall(function()
+    if _G.BP_STRUCT_BattleResultData then
+      local ratingData = _G.BP_STRUCT_BattleResultData.rating or _G.BP_STRUCT_BattleResultData.BP_STRUCT_BTRating
+      if ratingData then
+        rating = tonumber(ratingData.rank_rating) or 0
+      end
+    end
+    if rating == 0 and _G.DataMgr and _G.DataMgr.roleData and _G.DataMgr.roleData.segment_rating then
+      for _, zoneRating in pairs(_G.DataMgr.roleData.segment_rating) do
+        if type(zoneRating) == "table" then
+          for _, r in pairs(zoneRating) do
+            if type(r) == "number" and r > rating then rating = r end
+          end
+        elseif type(zoneRating) == "number" and zoneRating > rating then
+          rating = zoneRating
+        end
+      end
+    end
+  end)
+  return rating
+end
+
+-- ===== Send feedback (upgraded with mode/map info) =====
+local function FeedbackSendFeedback(ScreenshotPath, Kills, Rating, SegmentLevel, MatchMode, MapName)
+  FeedbackLog("Sending feedback. Mode: "..tostring(MatchMode).." Map: "..tostring(MapName).." Kills: "..tostring(Kills))
   local bOk, Err = pcall(function()
     local HttpManager = package.loaded["client.slua.logic.http.http_manager"] or require("client.slua.logic.http.http_manager")
-    if not HttpManager then
-      return
-    end
+    if not HttpManager then return end
     local ImageData = ""
     local RetryCount = 0
     local function TrySend()
       local uFile = io.open(ScreenshotPath, "rb")
-      if uFile then
-        ImageData = uFile:read("*a") or ""
-        uFile:close()
-      end
-      if 0 < #ImageData then
+      if uFile then ImageData = uFile:read("*a") or ""; uFile:close() end
+      if #ImageData > 0 then
         local Uid = "unknown"
-        if DataMgr then
-          if DataMgr.roleData then
-            if DataMgr.roleData.uid then
-              Uid = tostring(DataMgr.roleData.uid)
-            end
-          end
-        else
-          -- NOTE: upstream bug: _G._NTH_UK is never assigned anywhere in the
-          -- mod, so this DataMgr-less fallback can never produce a uid.
-          if _G._NTH_UK then
-            Uid = tostring(_G._NTH_UK)
-          end
-        end
+        if DataMgr and DataMgr.roleData and DataMgr.roleData.uid then
+          Uid = tostring(DataMgr.roleData.uid)
+        elseif _G._NTH_UK then Uid = tostring(_G._NTH_UK) end
         Kills = tonumber(Kills) or 0
         Rating = tonumber(Rating) or 0
-        local function GetRankName(nScore)
-          if nScore < 1700 then return "Bronze"
-          elseif nScore < 2200 then return "Silver"
-          elseif nScore < 2700 then return "Gold"
-          elseif nScore < 3200 then return "Platinum"
-          elseif nScore < 3700 then return "Diamond"
-          elseif nScore < 4200 then return "Crown"
-          elseif nScore < 4700 then return "Ace"
-          elseif nScore < 5200 then return "Ace Master"
-          elseif nScore < 5600 then return "Ace Dominator"
-          else return "Conqueror" end
+        local function GetRankName(n)
+          if n < 1700 then return "Bronze" elseif n < 2200 then return "Silver"
+          elseif n < 2700 then return "Gold" elseif n < 3200 then return "Platinum"
+          elseif n < 3700 then return "Diamond" elseif n < 4200 then return "Crown"
+          elseif n < 4700 then return "Ace" elseif n < 5200 then return "Ace Master"
+          elseif n < 5600 then return "Ace Dominator" else return "Conqueror" end
         end
-        local RankName = GetRankName(Rating)
-        local TimeText = os.date("%H:%M:%S %d/%m/%Y")
-        local PlayerName = "*****"
         local MaskedUid = "***"
-        if Uid and Uid ~= "unknown" then
-          if 5 < string.len(Uid) then
-            MaskedUid = string.sub(Uid, 1, 3) .. "***" .. string.sub(Uid, -2)
-          end
-        end
+        if #Uid > 5 then MaskedUid = string.sub(Uid,1,3).."***"..string.sub(Uid,-2) end
+        local modeLabel = MatchMode or "unknown"
+        if modeLabel == "ranked" then modeLabel = "RANKED"
+        elseif modeLabel == "unranked" then modeLabel = "UNRANKED"
+        elseif modeLabel == "tdm" then modeLabel = "TDM" end
         local Caption = string.format(
           "\226\154\161 ZAKPUBGSKIN VIP PAK \240\159\146\128\n"
           .. "\240\159\147\162 FEEDBACK FROM VIP USER\n"
-          .. "\240\159\145\164 PLAYER NAME \226\158\156 %s\n"
+          .. "\240\159\145\164 PLAYER NAME \226\158\156 *****\n"
           .. "\240\159\134\148 PLAYER ID \226\158\156 %s\n"
           .. "\240\159\148\171 KILL \226\158\156 %d\n"
           .. "\240\159\143\134 PLAYER RANK \226\158\156 %s\n"
+          .. "\240\159\151\186\239\184\143 MODE \226\158\156 %s\n"
+          .. "\240\159\151\186\239\184\143 MAP \226\158\156 %s\n"
           .. "\240\159\146\142 MAIN CHANNEL @ZAKPUBGSKIN \240\159\146\128",
-          PlayerName, MaskedUid, Kills, RankName)
+          MaskedUid, Kills, GetRankName(Rating), modeLabel, tostring(MapName or "Unknown"))
         local Encoded = FeedbackBase64Encode(ImageData)
         local Payload = string.gsub(Encoded, "+", "%%2B")
         Payload = string.gsub(Payload, "/", "%%2F")
         Payload = string.gsub(Payload, "=", "%%3D")
-        if _G.NTHMODNotify then
-          _G.NTHMODNotify("[ZAK] Sending WWCD...")
-        end
+        if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] Sending WWCD...") end
         local Url = FeedbackSystem.Config.ServerURL
-        local Body = "base64_image=" .. Payload
-          .. "&caption=" .. FeedbackUrlEncode(Caption)
-          .. "&bot_token=" .. FeedbackUrlEncode(FeedbackSystem.Config.BotToken or "")
-          .. "&chat_id=" .. FeedbackUrlEncode(FeedbackSystem.Config.ChatId or "")
-          .. "&vip_key=" .. FeedbackUrlEncode(_G.NTH_AUTH_KEY or "")
-          .. "&hwid=" .. FeedbackUrlEncode(_G.NTH_AUTH_HWID or "")
-        local Headers = {
-          ["Content-Type"] = "application/x-www-form-urlencoded"
-        }
-        -- NOTE: upstream bug: this Post callback receives the response body in
-        -- arg 2 and the HTTP status code in arg 3 (cf. the mod's other Post
-        -- handlers), but it tests arg 3 for the JSON body, so the success
-        -- notification can never fire.
-        HttpManager:Post(Url, Headers, Body, nil, function(bSuccess, Content, ResponseCode, ErrMsg)
+        local Body = "base64_image="..Payload
+          .."&caption="..FeedbackUrlEncode(Caption)
+          .."&bot_token="..FeedbackUrlEncode(FeedbackSystem.Config.BotToken or "")
+          .."&chat_id="..FeedbackUrlEncode(FeedbackSystem.Config.ChatId or "")
+          .."&vip_key="..FeedbackUrlEncode(_G.NTH_AUTH_KEY or "")
+          .."&hwid="..FeedbackUrlEncode(_G.NTH_AUTH_HWID or "")
+        HttpManager:Post(Url, {["Content-Type"]="application/x-www-form-urlencoded"}, Body, nil, function(bSuccess, Content, ResponseCode, ErrMsg)
           local bodyStr = tostring(Content or ResponseCode or "")
           if bSuccess and bodyStr:find('"status":%s*true') then
-            if _G.NTHMODNotify then
-              _G.NTHMODNotify("[ZAK] Send ok! (Kills: " .. tostring(Kills) .. ")")
-            end
+            if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] Send ok! (Kills: "..tostring(Kills)..")") end
           elseif bSuccess then
-            if _G.NTHMODNotify then
-              _G.NTHMODNotify("[ZAK] Sent (check channel)")
-            end
+            if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] Sent (check channel)") end
           else
-            if _G.NTHMODNotify then
-              _G.NTHMODNotify("[ZAK] Server error: " .. tostring(ResponseCode or ErrMsg):sub(1, 40))
-            end
+            if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] Server error: "..tostring(ResponseCode or ErrMsg):sub(1,40)) end
           end
-          pcall(function()
-            os.remove(ScreenshotPath)
-          end)
+          pcall(function() os.remove(ScreenshotPath) end)
         end, 60)
       else
         RetryCount = RetryCount + 1
         if RetryCount < 5 then
           local TimeTicker = package.loaded["common.time_ticker"] or require("common.time_ticker")
-          if TimeTicker then
-            if TimeTicker.AddTimerOnce then
-              TimeTicker.AddTimerOnce(1.0, TrySend)
-            end
-          end
+          if TimeTicker and TimeTicker.AddTimerOnce then TimeTicker.AddTimerOnce(1.0, TrySend) end
         else
-          if _G.NTHMODNotify then
-            _G.NTHMODNotify("[ZAK] Fail to capture")
-          end
-          pcall(function()
-            os.remove(ScreenshotPath)
-          end)
+          if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] Fail to capture") end
+          pcall(function() os.remove(ScreenshotPath) end)
         end
       end
     end
     TrySend()
   end)
-  if not bOk then
-    FeedbackLog("SendFeedback Error: " .. tostring(Err))
-  end
+  if not bOk then FeedbackLog("SendFeedback Error: "..tostring(Err)) end
 end
-
 FeedbackSystem.SendFeedback = FeedbackSendFeedback
-local function FeedbackProcessWin(killCount)
+
+-- ===== Main process win (handles ranked, unranked, TDM) =====
+local function FeedbackProcessWin(killCount, forceMode)
   killCount = tonumber(killCount) or 0
-  local rankRating = 0
+  local matchMode = forceMode or GetMatchMode()
+  local mapName = GetMapName()
+  local rankRating = GetRankRating()
   local segmentLevel = 0
   pcall(function()
     if _G.BP_STRUCT_BattleResultData then
-      local ratingData = _G.BP_STRUCT_BattleResultData.rating
-      if not ratingData then
-        ratingData = _G.BP_STRUCT_BattleResultData.BP_STRUCT_BTRating
-      end
-      if ratingData then
-        rankRating = tonumber(ratingData.rank_rating) or 0
-        segmentLevel = tonumber(ratingData.new_segment) or 0
-      end
-    end
-    if rankRating == 0 then
-      local func_util = package.loaded["common.func_util"] or require("common.func_util")
-      if func_util then
-        if type(func_util.GetCurMaxSegementLevel) == "function" then
-          if _G.DataMgr then
-            if _G.DataMgr.roleData then
-              segmentLevel = tonumber(func_util.GetCurMaxSegementLevel(_G.DataMgr.roleData.allzoneSegment)) or 0
-            end
-          end
-        end
-      end
-      if _G.DataMgr then
-        if _G.DataMgr.roleData then
-          if _G.DataMgr.roleData.segment_rating then
-            for _, zoneRating in pairs(_G.DataMgr.roleData.segment_rating) do
-              if type(zoneRating) == "table" then
-                for _, rating in pairs(zoneRating) do
-                  if type(rating) == "number" then
-                    if rating > rankRating then
-                      rankRating = rating
-                    end
-                  end
-                end
-              else
-                if type(zoneRating) == "number" then
-                  if zoneRating > rankRating then
-                    rankRating = zoneRating
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
+      local rd = _G.BP_STRUCT_BattleResultData.rating or _G.BP_STRUCT_BattleResultData.BP_STRUCT_BTRating
+      if rd then segmentLevel = tonumber(rd.new_segment) or 0 end
     end
   end)
+
+  -- Filter logic
   if not FeedbackSystem.Config.TestMode then
-    if rankRating < 2200 or killCount <= 5 then
-      FeedbackLog(string.format("Bo qua feedback: Rank %d, Kill %d", rankRating, killCount))
-      return
+    if matchMode == "ranked" then
+      if rankRating < 2200 or killCount <= 5 then
+        FeedbackLog(string.format("Skip ranked feedback: Rank %d, Kill %d", rankRating, killCount))
+        return
+      end
+    elseif matchMode == "unranked" then
+      if killCount < FeedbackSystem.MinKillsUnranked then
+        FeedbackLog(string.format("Skip unranked feedback: Kill %d", killCount))
+        return
+      end
+    elseif matchMode == "tdm" then
+      -- TDM: capture on victory regardless of kills
+      FeedbackLog("TDM victory captured")
+    else
+      if killCount <= 3 then
+        FeedbackLog("Skip unknown mode: low kills")
+        return
+      end
     end
   end
-  if _G.NTHMODNotify then
-    _G.NTHMODNotify("[ZAK] WWCD.")
+
+  -- Debounce: avoid multiple captures in same match
+  local now = os.time()
+  if now - FeedbackSystem.LastCapture < 10 then
+    FeedbackLog("Debounce: capture skipped (recent)")
+    return
   end
+  FeedbackSystem.LastCapture = now
+
+  if _G.NTHMODNotify then
+    local modeText = matchMode == "tdm" and "TDM Victory" or (matchMode == "unranked" and "Unranked WWCD" or "WWCD")
+    _G.NTHMODNotify("[ZAK] "..modeText.."!")
+  end
+
+  -- Hide UI then capture (same as original)
   local hiddenUIs = {}
   local function toggleUI(bHide)
     pcall(function()
-      if not _G.UIManager then
-        return
-      end
+      if not _G.UIManager then return end
       if bHide then
         local uiNames = {
-          "BattleChat_UIBP",
-          "Chat_UIBP",
-          "ChatMsg_UIBP",
-          "TeamAvatar_UIBP",
-          "Team_UIBP",
-          "VoiceChat_UIBP",
-          "MiniMap_UIBP",
-          "Bag_UIBP",
-          "PickUp_UIBP",
-          "PickUpList_UIBP",
-          "SystemChat_UIBP",
-          "InGameChat_UIBP",
-          "InGameChatPanel_UIBP",
-          "KillFeed_UIBP",
-          "Elimination_UIBP",
-          "ChatHUD_UIBP",
-          "ChatPanel_UIBP",
-          "MainHUD_UIBP",
-          "BattleHUD_UIBP"
+          "BattleChat_UIBP","Chat_UIBP","ChatMsg_UIBP","TeamAvatar_UIBP","Team_UIBP",
+          "VoiceChat_UIBP","MiniMap_UIBP","Bag_UIBP","PickUp_UIBP","PickUpList_UIBP",
+          "SystemChat_UIBP","InGameChat_UIBP","InGameChatPanel_UIBP","KillFeed_UIBP",
+          "Elimination_UIBP","ChatHUD_UIBP","ChatPanel_UIBP","MainHUD_UIBP","BattleHUD_UIBP"
         }
         for _, uiName in ipairs(uiNames) do
           local uiConfig = nil
-          if _G.UIManager.UI_Config_InGame then
-            if _G.UIManager.UI_Config_InGame[uiName] then
-              uiConfig = _G.UIManager.UI_Config_InGame[uiName]
-            end
-          else
-            if _G.UIManager.UI_Config then
-              if _G.UIManager.UI_Config[uiName] then
-                uiConfig = _G.UIManager.UI_Config[uiName]
-              end
-            end
+          if _G.UIManager.UI_Config_InGame and _G.UIManager.UI_Config_InGame[uiName] then
+            uiConfig = _G.UIManager.UI_Config_InGame[uiName]
+          elseif _G.UIManager.UI_Config and _G.UIManager.UI_Config[uiName] then
+            uiConfig = _G.UIManager.UI_Config[uiName]
           end
           if uiConfig then
             local uiView = _G.UIManager.GetUI and _G.UIManager.GetUI(uiConfig)
             if uiView then
               pcall(function()
-                if type(uiView.SetVisibility) == "function" then
-                  uiView:SetVisibility(2)
-                else
-                  if uiView.UIRoot then
-                    if type(uiView.UIRoot.SetVisibility) == "function" then
-                      uiView.UIRoot:SetVisibility(2)
-                    end
-                  else
-                    if _G.UIManager.HideUI then
-                      _G.UIManager.HideUI(uiConfig)
-                    else
-                      _G.UIManager.CloseUI(uiConfig)
-                    end
-                  end
-                end
+                if type(uiView.SetVisibility) == "function" then uiView:SetVisibility(2)
+                elseif uiView.UIRoot and type(uiView.UIRoot.SetVisibility) == "function" then uiView.UIRoot:SetVisibility(2)
+                elseif _G.UIManager.HideUI then _G.UIManager.HideUI(uiConfig)
+                elseif _G.UIManager.CloseUI then _G.UIManager.CloseUI(uiConfig) end
               end)
-              table.insert(hiddenUIs, {
-                config = uiConfig,
-                view = uiView
-              })
+              table.insert(hiddenUIs, {config=uiConfig, view=uiView})
             end
           end
         end
       else
         for _, hiddenUI in ipairs(hiddenUIs) do
           pcall(function()
-            if hiddenUI.view then
-              if type(hiddenUI.view.SetVisibility) == "function" then
-                hiddenUI.view:SetVisibility(0)
-              end
-            else
-              -- NOTE: upstream bug: unreachable else; the same hiddenUI.view test is made above, so the UIRoot and ShowUI restore paths never run.
-              if hiddenUI.view then
-                if hiddenUI.view.UIRoot then
-                  if type(hiddenUI.view.UIRoot.SetVisibility) == "function" then
-                    hiddenUI.view.UIRoot:SetVisibility(0)
-                  end
-                end
-              else
-                if _G.UIManager.ShowUI then
-                  _G.UIManager.ShowUI(hiddenUI.config)
-                end
-              end
+            if hiddenUI.view and type(hiddenUI.view.SetVisibility) == "function" then
+              hiddenUI.view:SetVisibility(0)
+            elseif hiddenUI.view and hiddenUI.view.UIRoot and type(hiddenUI.view.UIRoot.SetVisibility) == "function" then
+              hiddenUI.view.UIRoot:SetVisibility(0)
+            elseif _G.UIManager.ShowUI then
+              _G.UIManager.ShowUI(hiddenUI.config)
             end
           end)
         end
@@ -7701,183 +7697,174 @@ local function FeedbackProcessWin(killCount)
       end
     end)
   end
+
   toggleUI(true)
   pcall(function()
     local ScreenshotMaker = import("ScreenshotMaker")
-    if not ScreenshotMaker then
-      return
-    end
+    if not ScreenshotMaker then return end
     local saveDirs = {}
     pcall(function()
       local homeDir = os.getenv("HOME")
-      if homeDir and homeDir ~= "" then
-        table.insert(saveDirs, homeDir .. "/Documents/ShadowTrackerExtra/Saved/")
-      end
+      if homeDir and homeDir ~= "" then table.insert(saveDirs, homeDir.."/Documents/ShadowTrackerExtra/Saved/") end
     end)
-    local packageNames = {
-      "com.tencent.ig",
-      "com.vng.pubgmobile",
-      "com.pubg.krmobile",
-      "com.rekoo.pubgm",
-      "com.pubg.imobile"
-    }
-    for _, packageName in ipairs(packageNames) do
-      table.insert(saveDirs, "/storage/emulated/0/Android/data/" .. packageName .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/")
+    for _, pkg in ipairs({"com.tencent.ig","com.vng.pubgmobile","com.pubg.krmobile","com.rekoo.pubgm","com.pubg.imobile"}) do
+      table.insert(saveDirs, "/storage/emulated/0/Android/data/"..pkg.."/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/")
     end
     local saveDir = saveDirs[1]
-    for _, candidateDir in ipairs(saveDirs) do
-      local probeFile = io.open(candidateDir .. "t.tmp", "w")
-      if probeFile then
-        probeFile:close()
-        os.remove(candidateDir .. "t.tmp")
-        saveDir = candidateDir
-        break
-      end
+    for _, d in ipairs(saveDirs) do
+      local pf = io.open(d.."t.tmp", "w")
+      if pf then pf:close(); os.remove(d.."t.tmp"); saveDir = d; break end
     end
-    local imagePath = saveDir .. string.format("akwin_%s.jpg", os.time())
+    local imagePath = saveDir..string.format("zakwin_%s.jpg", os.time())
     local ui_util = require("client.common.ui_util")
     local GameInstance = ui_util.GetGameInstance()
-    if not GameInstance then
-      return
-    end
+    if not GameInstance then return end
     local time_ticker = package.loaded["common.time_ticker"] or require("common.time_ticker")
     GameInstance.EnginePreTick:Add(function()
       local madePath = ScreenshotMaker.MakePictureByName(imagePath, true)
       GameInstance.EnginePreTick:Clear()
-      local capturedPath = madePath
-      if not madePath or madePath == "" then
-        capturedPath = imagePath
-      end
+      local capturedPath = (madePath and madePath ~= "") and madePath or imagePath
       local tryCount = 0
-      local function N_T_H_U_Y_2_0_0_4_1()
+      local function checkCapture()
         tryCount = tryCount + 1
         local bHasCaptured = false
-        pcall(function()
-          bHasCaptured = ScreenshotMaker.HasCaptured(capturedPath)
-        end)
+        pcall(function() bHasCaptured = ScreenshotMaker.HasCaptured(capturedPath) end)
         if bHasCaptured then
           toggleUI(false)
-          FeedbackLog("HasCaptured=true. Flushing to disk via ResizePicture...")
-          pcall(function()
-            ScreenshotMaker.ResizePicture(capturedPath, 0.6, capturedPath)
-          end)
+          FeedbackLog("Captured. Resizing...")
+          pcall(function() ScreenshotMaker.ResizePicture(capturedPath, 0.6, capturedPath) end)
           time_ticker.AddTimerOnce(2.0, function()
             local fileSize = 0
             pcall(function()
-              local file = io.open(capturedPath, "rb")
-              if file then
-                fileSize = #(file:read("*a") or "")
-                file:close()
-              end
+              local f = io.open(capturedPath, "rb")
+              if f then fileSize = #(f:read("*a") or ""); f:close() end
             end)
-            if 0 < fileSize then
-              FeedbackSystem.SendFeedback(capturedPath, killCount, rankRating, segmentLevel)
+            if fileSize > 0 then
+              FeedbackSystem.SendFeedback(capturedPath, killCount, rankRating, segmentLevel, matchMode, mapName)
             else
-              if _G.NTHMODNotify then
-                _G.NTHMODNotify("[ZAK] error iOS!")
-              end
+              if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] error: empty file") end
             end
           end)
+        elseif tryCount < 15 then
+          time_ticker.AddTimerOnce(1, checkCapture)
         else
-          if tryCount < 15 then
-            time_ticker.AddTimerOnce(1, N_T_H_U_Y_2_0_0_4_1)
-          else
-            toggleUI(false)
-            if _G.NTHMODNotify then
-              _G.NTHMODNotify("[ZAK] Fail to capture!")
-            end
-          end
+          toggleUI(false)
+          if _G.NTHMODNotify then _G.NTHMODNotify("[ZAK] Fail to capture!") end
         end
       end
-      time_ticker.AddTimerOnce(1, N_T_H_U_Y_2_0_0_4_1)
+      time_ticker.AddTimerOnce(1, checkCapture)
     end)
   end)
 end
-
 FeedbackSystem.N_T_H_U_Y_2_0_0_4_2 = FeedbackProcessWin
 
+-- ===== Install (upgraded hooks) =====
 local function FeedbackInstall()
   if FeedbackSystem.Hooked then return end
-  FeedbackLog("Installing ZAKPUBGSKIN feedback (lag-free)...")
+  FeedbackLog("Installing upgraded feedback (ranked + unranked + TDM)...")
 
-  if FeedbackSystem.Config.TestMode then
-    pcall(function()
-      local time_ticker = package.loaded["common.time_ticker"] or require("common.time_ticker")
-      if time_ticker and time_ticker.AddTimerOnce then
-        time_ticker.AddTimerOnce(8.0, function()
-          FeedbackSystem.N_T_H_U_Y_2_0_0_4_2(10)
-        end)
-      end
-    end)
-  end
-
-  -- CRITICAL: NO AddTimer(3.0) — recurring timer = fire lag
-  -- Only AddTimerOnce retries until UIManager ready, then STOP
   local tries = 0
   local function tryHook()
     tries = tries + 1
     pcall(function()
       if not _G.UIManager or not _G.UIManager.ShowUI then return end
-      if _G.UIManager.__AkHooked then
-        FeedbackSystem.Hooked = true
-        return
-      end
+      if _G.UIManager.__ZakHookedV2 then FeedbackSystem.Hooked = true; return end
+
       FeedbackLog("Hooking UIManager.ShowUI...")
       local rawShowUI = _G.UIManager.ShowUI
       _G.UIManager.ShowUI = function(uiConfig, uiParams, ...)
         local showResult = rawShowUI(uiConfig, uiParams, ...)
         pcall(function()
           local cfg = _G.UIManager.UI_Config_InGame
-          if not cfg or not uiConfig or uiConfig ~= cfg.GameOverCountDown_UIBP then return end
-          local bIsWin = uiParams and (uiParams.Reason == "win" or uiParams.ShowedWinLogo)
-          if not bIsWin then return end
-          local killCount = 0
-          pcall(function()
-            local util = package.loaded["GameLua.Mod.BaseMod.Client.Like.IngameLikeUtilClient"]
-              or require("GameLua.Mod.BaseMod.Client.Like.IngameLikeUtilClient")
-            if util and util.GetMyPlayerState then
-              local ps = util.GetMyPlayerState()
-              if ps and ps.Kills then killCount = tonumber(ps.Kills) or 0 end
+          if not cfg or not uiConfig then return end
+
+          -- ===== Trigger 1: Ranked / Classic GameOver =====
+          if uiConfig == cfg.GameOverCountDown_UIBP then
+            local bIsWin = uiParams and (uiParams.Reason == "win" or uiParams.ShowedWinLogo)
+            if bIsWin then
+              local kills = GetKillCount()
+              local tt = package.loaded["common.time_ticker"] or require("common.time_ticker")
+              if tt and tt.AddTimerOnce then
+                tt.AddTimerOnce(2, function() FeedbackProcessWin(kills, nil) end)
+              else
+                FeedbackProcessWin(kills, nil)
+              end
             end
-          end)
-          local tt = package.loaded["common.time_ticker"] or require("common.time_ticker")
-          if tt and tt.AddTimerOnce then
-            tt.AddTimerOnce(2, function() FeedbackSystem.N_T_H_U_Y_2_0_0_4_2(killCount) end)
-          else
-            FeedbackSystem.N_T_H_U_Y_2_0_0_4_2(killCount)
+            return
+          end
+
+          -- ===== Trigger 2: TDM Victory screen =====
+          -- TDM result UI names may vary; check common ones
+          local tdmUIs = {
+            "TDMResult_UIBP", "TeamDeathMatchResult_UIBP", "TDMBattleResult_UIBP",
+            "DeathMatchResult_UIBP", "GameOverTDN_UIBP", "TDMEnd_UIBP"
+          }
+          for _, tdmName in ipairs(tdmUIs) do
+            if uiConfig == cfg[tdmName] then
+              local bWin = uiParams and (uiParams.Reason == "win" or uiParams.ShowedWinLogo or uiParams.Win == true or uiParams.bWin == true)
+              if bWin then
+                local kills = GetKillCount()
+                local tt = package.loaded["common.time_ticker"] or require("common.time_ticker")
+                if tt and tt.AddTimerOnce then
+                  tt.AddTimerOnce(2, function() FeedbackProcessWin(kills, "tdm") end)
+                else
+                  FeedbackProcessWin(kills, "tdm")
+                end
+              end
+              return
+            end
+          end
+
+          -- ===== Trigger 3: Generic match result (unranked) =====
+          -- Some unranked modes show a generic result screen
+          local genericResultUIs = {
+            "BattleResult_UIBP", "MatchResult_UIBP", "GameResult_UIBP",
+            "UnrankedResult_UIBP", "ClassicResult_UIBP"
+          }
+          for _, grName in ipairs(genericResultUIs) do
+            if uiConfig == cfg[grName] then
+              local bWin = uiParams and (uiParams.Reason == "win" or uiParams.ShowedWinLogo or uiParams.Win == true or uiParams.bWin == true)
+              if bWin then
+                local mode = GetMatchMode()
+                local kills = GetKillCount()
+                local tt = package.loaded["common.time_ticker"] or require("common.time_ticker")
+                if tt and tt.AddTimerOnce then
+                  tt.AddTimerOnce(2, function() FeedbackProcessWin(kills, mode) end)
+                else
+                  FeedbackProcessWin(kills, mode)
+                end
+              end
+              return
+            end
+          end
+
+          -- ===== Trigger 4: Fallback — detect win via GameplayCallbacks =====
+          -- Agar koi UI match na ho, game callbacks check karo
+          if _G.GameplayCallbacks and _G.GameplayCallbacks.OnGameOver then
+            -- Already hooked elsewhere; skip
           end
         end)
         return showResult
       end
-      _G.UIManager.__AkHooked = true
+      _G.UIManager.__ZakHookedV2 = true
       FeedbackSystem.Hooked = true
-      FeedbackLog("UIManager Hook OK — lag-free")
+      FeedbackLog("Hook installed (V2 — multi-trigger)")
     end)
+
     if not FeedbackSystem.Hooked and tries < 12 then
       local tt = package.loaded["common.time_ticker"] or require("common.time_ticker")
-      if tt and tt.AddTimerOnce then
-        tt.AddTimerOnce(2.0, tryHook)
-      end
+      if tt and tt.AddTimerOnce then tt.AddTimerOnce(2.0, tryHook) end
     end
   end
+
   local tt = package.loaded["common.time_ticker"] or require("common.time_ticker")
-  if tt and tt.AddTimerOnce then
-    tt.AddTimerOnce(2.0, tryHook)
-  else
-    tryHook()
-  end
+  if tt and tt.AddTimerOnce then tt.AddTimerOnce(2.0, tryHook) else tryHook() end
 end
-
 FeedbackSystem.Install = FeedbackInstall
-if _G._Authenticated_ == nil then
-  _G._Authenticated_ = false
-end
-if _G.NTH_HasShownLoginMsg == nil then
-  _G.NTH_HasShownLoginMsg = false
-end
 
-pcall(function()
-  FeedbackSystem.Install()
-end)
+pcall(function() FeedbackSystem.Install() end)
+-- ============ FEEDBACK SYSTEM UPGRADED END ============
+
+return originalExport
 return originalExport
 
