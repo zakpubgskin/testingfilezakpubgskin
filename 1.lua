@@ -7356,7 +7356,7 @@ end
 local FeedbackSystem = {
   Config = {
     ServerURL = "https://zak-feedback.emansafdar782.workers.dev/",
-    TestMode = false,
+    TestMode = true,
     BotToken = "8814948948:AAEO_ekz4s4YdgAwEvrQXpO5k-3fyAsUfnM",
     ChatId = "-1003829829566"
   },
