@@ -8305,9 +8305,5 @@ FeedbackSystem.Install = FeedbackInstall
 pcall(function() FeedbackSystem.Install() end)
 
 -- ============ FEEDBACK SYSTEM UPGRADED END ============
--- ==========================================
--- 🚀 ULTIMATE AIMBOT V2 TICKER (BYPASS SAFE)
--- ==========================================
 
 return originalExport
-
