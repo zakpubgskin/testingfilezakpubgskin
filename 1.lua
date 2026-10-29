@@ -1750,24 +1750,6 @@ do
             GetFunc=function() return featureState().Settings.AimEnabled end,
             SetFunc=function(c,v) featureState().SetAim(value(c,v));return true end}
     }
-        local AimV2 = {
-        {Key="LunarAimV2_Main",UI=AliasMap.Switcher,Text="CUSTOM AIMBOT V2",ExpandIndex=0,
-            GetFunc=function() return _G.LexusConfig.AimTouchEnable end,
-            SetFunc=function(c,v) _G.LexusConfig.AimTouchEnable = v; return true end},
-            
-        {Key="LunarAimV2_Hip",UI=AliasMap.TitleSwitcher,Text="AIMBOT HIPFIRE",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
-            GetFunc=function() return _G.LexusConfig.AimTouchHipfire end,
-            SetFunc=function(c,v) _G.LexusConfig.AimTouchHipfire = v; return true end},
-        {Key="LunarAimV2_Hip_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_Hip",Min=1,Max=4,
-            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipBone or 1 end,
-            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipBone = v; return true end},
-        {Key="LunarAimV2_Hip_Spd",UI=AliasMap.Slider,Text="  Speed",ExpandHandle="LunarAimV2_Hip",Min=1,Max=100,
-            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipSpeed or 50 end,
-            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipSpeed = v; return true end},
-        {Key="LunarAimV2_Hip_FOV",UI=AliasMap.Slider,Text="  FOV",ExpandHandle="LunarAimV2_Hip",Min=1,Max=100,
-            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipFOV or 30 end,
-            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipFOV = v; return true end},
-
             local AimV2 = {
         {Key="LunarAimV2_Main",UI=AliasMap.Switcher,Text="CUSTOM AIMBOT V2",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchEnable end,
