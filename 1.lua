@@ -5815,21 +5815,22 @@ do
     end
 
     -- 60 FPS Aimbot Loop
-    local FastAimbotTick = function()
+    local function FastAimbotTickV2()
+        if myAimbotToken ~= _G.LexusState.AimbotLoopToken then return end
         pcall(function()
             if _G.LexusConfig.AimTouchEnable then
-                _G.AimTouch()
+                _G.AimTouchV2()
             end
         end)
         local okTicker, ticker = pcall(require, "common.time_ticker")
         if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.016, FastAimbotTick)
+            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
         end
     end
 
     local okTicker, ticker = pcall(require, "common.time_ticker")
     if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.5, FastAimbotTick)
+        ticker.AddTimerOnce(0.1, FastAimbotTickV2)
     end
 end
 -- ============================================================================
