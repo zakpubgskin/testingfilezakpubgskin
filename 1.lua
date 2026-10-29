@@ -1796,6 +1796,14 @@ do
         {Key="LunarAimV2_SG_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_SG",Min=1,Max=4,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGBone or 2 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGBone = v; return true end},
+                -- Shotgun Toggle Add
+        {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
+            GetFunc=function() return _G.LexusConfig.AimTouchSG end,
+            SetFunc=function(c,v) _G.LexusConfig.AimTouchSG = v; return true end},
+        {Key="LunarAimV2_SG_AutoFire",UI=AliasMap.Switcher,Text="  Auto Fire",ExpandHandle="LunarAimV2_SG",
+            GetFunc=function() return _G.LexusConfig.AimTouchSGAutoFire end,
+            SetFunc=function(c,v) _G.LexusConfig.AimTouchSGAutoFire = v; return true end},
+
 
         {Key="LunarAimV2_Sniper",UI=AliasMap.TitleSwitcher,Text="AIMBOT SNIPER",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
@@ -1806,6 +1814,10 @@ do
         {Key="LunarAimV2_Sniper_Dist",UI=AliasMap.Slider,Text="  Distance",ExpandHandle="LunarAimV2_Sniper",Min=1,Max=100,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperDist or 400 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperDist = v; return true end}
+                -- Sniper Toggle Add
+        {Key="LunarAimV2_Sniper",UI=AliasMap.TitleSwitcher,Text="AIMBOT SNIPER",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
+            GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
+            SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeSniper = v; return true end},
     }
     -- Verified native settings item contract: absolute Min/Max values, native
     -- key/value callbacks, and expansion events owned by the game's page.
