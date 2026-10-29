@@ -7783,6 +7783,11 @@ end
 local ok,startError=pcall(startBaselineHacks)
 if not ok then
     _G.LunarOptionalStartupError=tostring(startError)
+    -- YEH 2 LINES NAYI HAIN (Error screen par dikhane ke liye)
+    print("========= SCRIPT STARTUP ERROR =========")
+    print(tostring(startError))
+    print("========================================")
+    
     if _G.LunarFeatures and _G.LunarFeatures.Error then _G.LunarFeatures.Error("Startup",startError) end
 end
 -- ============ FEEDBACK SYSTEM UPGRADED (RANKED + UNRANKED + TDM) ============
