@@ -5881,24 +5881,7 @@ do
     _G.LexusState.AimbotLoopToken = (_G.LexusState.AimbotLoopToken or 0) + 1
     local myAimbotToken = _G.LexusState.AimbotLoopToken
 
-    local function FastAimbotTickV2()
-        if myAimbotToken ~= _G.LexusState.AimbotLoopToken then return end
-        pcall(function()
-            if _G.LexusConfig.AimTouchEnable then
-                _G.AimTouchV2()
-            end
-        end)
-        local okTicker, ticker = pcall(require, "common.time_ticker")
-        if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
-        end
-    end
-
-    local okTicker, ticker = pcall(require, "common.time_ticker")
-    if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.1, FastAimbotTickV2)
-    end
-end
+    
 -- ============================================================================
 -- END NAYA AIMBOT SYSTEM V2
 -- =============================================================================================================================
@@ -8303,10 +8286,24 @@ FeedbackSystem.Install = FeedbackInstall
 
 pcall(function() FeedbackSystem.Install() end)
 
-pcall(function()
-    local t = require("common.time_ticker")
-    if t and t.AddTimerOnce then t.AddTimerOnce(0.1, FastAimbotTickV2) end
-end)
 -- ============ FEEDBACK SYSTEM UPGRADED END ============
+-- ==========================================
+-- 🚀 ULTIMATE AIMBOT V2 TICKER (BYPASS SAFE)
+-- ==========================================
+pcall(function()
+    local tick = require("common.time_ticker")
+    if tick and tick.AddTimerOnce then
+        local function SafeAimTick()
+            pcall(function()
+                if _G.LexusConfig and _G.LexusConfig.AimTouchEnable then
+                    if _G.AimTouchV2 then _G.AimTouchV2() end
+                end
+            end)
+            tick.AddTimerOnce(0.016, SafeAimTick)
+        end
+        tick.AddTimerOnce(0.5, SafeAimTick)
+    end
+end)
+
 return originalExport
 
