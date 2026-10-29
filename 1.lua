@@ -1768,6 +1768,29 @@ do
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipFOV or 30 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipFOV = v; return true end},
 
+            local AimV2 = {
+        {Key="LunarAimV2_Main",UI=AliasMap.Switcher,Text="CUSTOM AIMBOT V2",ExpandIndex=0,
+            GetFunc=function() return _G.LexusConfig.AimTouchEnable end,
+            SetFunc=function(c,v) _G.LexusConfig.AimTouchEnable = v; return true end},
+            
+        -- ================= HIPFIRE =================
+        {Key="LunarAimV2_Hip",UI=AliasMap.TitleSwitcher,Text="AIMBOT HIPFIRE",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
+            GetFunc=function() return _G.LexusConfig.AimTouchHipfire end,
+            SetFunc=function(c,v) _G.LexusConfig.AimTouchHipfire = v; return true end},
+        {Key="LunarAimV2_Hip_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_Hip",Min=1,Max=4,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipBone or 1 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipBone = v; return true end},
+        {Key="LunarAimV2_Hip_Spd",UI=AliasMap.Slider,Text="  Speed",ExpandHandle="LunarAimV2_Hip",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipSpeed or 50 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipSpeed = v; return true end},
+        {Key="LunarAimV2_Hip_FOV",UI=AliasMap.Slider,Text="  FOV",ExpandHandle="LunarAimV2_Hip",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchHipFOV or 30 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipFOV = v; return true end},
+        {Key="LunarAimV2_Hip_Dist",UI=AliasMap.Slider,Text="  Distance",ExpandHandle="LunarAimV2_Hip",Min=1,Max=100,
+            GetFunc=function() return math.floor((_G.LexusState.CustomTextData.AimTouchHipDist or 250) / 5) end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchHipDist = v * 5; return true end},
+
+        -- ================= SCOPE ALL =================
         {Key="LunarAimV2_Scope",UI=AliasMap.TitleSwitcher,Text="AIMBOT SCOPE ALL",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchScopeAll end,
             SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeAll = v; return true end},
@@ -1781,12 +1804,13 @@ do
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopeFOV or 20 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeFOV = v; return true end},
         {Key="LunarAimV2_Scope_Dist",UI=AliasMap.Slider,Text="  Distance",ExpandHandle="LunarAimV2_Scope",Min=1,Max=100,
-            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopeDist or 300 end,
-            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeDist = v; return true end},
+            GetFunc=function() return math.floor((_G.LexusState.CustomTextData.AimTouchScopeDist or 300) / 5) end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopeDist = v * 5; return true end},
         {Key="LunarAimV2_Scope_Pred",UI=AliasMap.Slider,Text="  Prediction",ExpandHandle="LunarAimV2_Scope",Min=0,Max=100,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopePred or 0 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopePred = v; return true end},
 
+        -- ================= SHOTGUN =================
         {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchSG end,
             SetFunc=function(c,v) _G.LexusConfig.AimTouchSG = v; return true end},
@@ -1796,28 +1820,35 @@ do
         {Key="LunarAimV2_SG_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_SG",Min=1,Max=4,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGBone or 2 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGBone = v; return true end},
-                -- Shotgun Toggle Add
-        {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
-            GetFunc=function() return _G.LexusConfig.AimTouchSG end,
-            SetFunc=function(c,v) _G.LexusConfig.AimTouchSG = v; return true end},
-        {Key="LunarAimV2_SG_AutoFire",UI=AliasMap.Switcher,Text="  Auto Fire",ExpandHandle="LunarAimV2_SG",
-            GetFunc=function() return _G.LexusConfig.AimTouchSGAutoFire end,
-            SetFunc=function(c,v) _G.LexusConfig.AimTouchSGAutoFire = v; return true end},
+        {Key="LunarAimV2_SG_Spd",UI=AliasMap.Slider,Text="  Speed",ExpandHandle="LunarAimV2_SG",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGSpeed or 80 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGSpeed = v; return true end},
+        {Key="LunarAimV2_SG_FOV",UI=AliasMap.Slider,Text="  FOV",ExpandHandle="LunarAimV2_SG",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGFOV or 40 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGFOV = v; return true end},
+        {Key="LunarAimV2_SG_Dist",UI=AliasMap.Slider,Text="  Distance",ExpandHandle="LunarAimV2_SG",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGDist or 30 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGDist = v; return true end},
 
-
+        -- ================= SNIPER =================
         {Key="LunarAimV2_Sniper",UI=AliasMap.TitleSwitcher,Text="AIMBOT SNIPER",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
             SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeSniper = v; return true end},
         {Key="LunarAimV2_Sniper_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_Sniper",Min=1,Max=4,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperBone or 1 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperBone = v; return true end},
+        {Key="LunarAimV2_Sniper_Spd",UI=AliasMap.Slider,Text="  Speed",ExpandHandle="LunarAimV2_Sniper",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperSpeed or 30 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperSpeed = v; return true end},
+        {Key="LunarAimV2_Sniper_FOV",UI=AliasMap.Slider,Text="  FOV",ExpandHandle="LunarAimV2_Sniper",Min=1,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperFOV or 20 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperFOV = v; return true end},
         {Key="LunarAimV2_Sniper_Dist",UI=AliasMap.Slider,Text="  Distance",ExpandHandle="LunarAimV2_Sniper",Min=1,Max=100,
-            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperDist or 400 end,
-            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperDist = v; return true end}
-                -- Sniper Toggle Add
-        {Key="LunarAimV2_Sniper",UI=AliasMap.TitleSwitcher,Text="AIMBOT SNIPER",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
-            GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
-            SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeSniper = v; return true end},
+            GetFunc=function() return math.floor((_G.LexusState.CustomTextData.AimTouchSniperDist or 400) / 5) end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperDist = v * 5; return true end},
+        {Key="LunarAimV2_Sniper_Pred",UI=AliasMap.Slider,Text="  Prediction",ExpandHandle="LunarAimV2_Sniper",Min=0,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperPred or 0 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperPred = v; return true end}
     }
     -- Verified native settings item contract: absolute Min/Max values, native
     -- key/value callbacks, and expansion events owned by the game's page.
