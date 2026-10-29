@@ -8294,12 +8294,6 @@ FeedbackSystem.Install = FeedbackInstall
 
 pcall(function() FeedbackSystem.Install() end)
 
--- 🚀 START AIMBOT V2 LOOP
-_G.LexusState.AimbotLoopToken = (_G.LexusState.AimbotLoopToken or 0) + 1
-local okTicker, ticker = pcall(require, "common.time_ticker")
-if okTicker and ticker and ticker.AddTimerOnce then
-    ticker.AddTimerOnce(0.1, FastAimbotTickV2)
-end
 -- ============ FEEDBACK SYSTEM UPGRADED END ============
 
 return originalExport
