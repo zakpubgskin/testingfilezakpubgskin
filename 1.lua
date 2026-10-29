@@ -5316,8 +5316,9 @@ _G.AimTouch = function()
         local ui_util = AimUI
         if not ui_util then return end
         
-        local viewportSize = ui_util.GetViewportSize()
-        if not viewportSize then return end
+                    local viewportSize = nil
+            pcall(function() viewportSize = UIUtil.GetViewportSize() end)
+            if not viewportSize or not viewportSize.X or viewportSize.X <= 0 then return end
         
         local centerX = viewportSize.X * 0.5
         local centerY = viewportSize.Y * 0.5
@@ -5696,8 +5697,9 @@ do
             local camLoc = camManager:GetCameraLocation()
             if not camLoc then return end
             
-            local viewportSize = UIUtil.GetViewportSize()
-            if not viewportSize then return end
+                        local viewportSize = nil
+            pcall(function() viewportSize = UIUtil.GetViewportSize() end)
+            if not viewportSize or not viewportSize.X or viewportSize.X <= 0 then return end
             
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
