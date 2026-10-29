@@ -8303,6 +8303,10 @@ FeedbackSystem.Install = FeedbackInstall
 
 pcall(function() FeedbackSystem.Install() end)
 
+pcall(function()
+    local t = require("common.time_ticker")
+    if t and t.AddTimerOnce then t.AddTimerOnce(0.1, FastAimbotTickV2) end
+end)
 -- ============ FEEDBACK SYSTEM UPGRADED END ============
 return originalExport
 
