@@ -8305,5 +8305,4 @@ pcall(function() FeedbackSystem.Install() end)
 -- ============ FEEDBACK SYSTEM UPGRADED END ============
 
 return originalExport
-return originalExport
 
