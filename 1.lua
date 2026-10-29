@@ -5529,7 +5529,7 @@ end
 --_G.LunarFeatures.Aim={Tick=_G.AimTouch}
 end
 -- ============================================================================
--- 🚀 NAYA AIMBOT SYSTEM V2 (From BRPlayerCharacterBase) - REPLACES OLD AIM
+-- 🚀 NAYA AIMBOT SYSTEM V2 (OPTIMIZED & FIXED)
 -- ============================================================================
 do
     local GameplayData = require("GameLua.GameCore.Data.GameplayData")
@@ -5565,7 +5565,7 @@ do
         return result
     end
 
-    -- 2. Main AimTouch V2 Logic (Renamed to avoid conflict)
+    -- 2. Main AimTouch V2 Logic (FIXED)
     _G.AimTouchV2 = function()
         pcall(function()
             if not _G.LexusConfig.AimTouchEnable then return end
@@ -5577,10 +5577,9 @@ do
             if not (slua and slua.isValid and slua.isValid(pc)) then return end
             
             local isFiring = player.bIsWeaponFiring
-            local isADS = player.bIsGunADS
-            pcall(function()
-                isADS = player.bIsGunADS == true or player.bIsAiming == true or player.bIsWeaponAiming == true
-            end)
+            
+            -- ADS (Scope) detection fix
+            local isADS = player.bIsGunADS == true or player.bIsAiming == true or player.bIsWeaponAiming == true
             pcall(function()
                 if not isADS then
                     local cam = player.ThirdPersonCameraComponent
@@ -5593,9 +5592,7 @@ do
                 weapon = player:GetCurrentShootWeapon()
             end
             
-            local isShotgun = false
-            local isSniper = false
-            local currentAmmo = 1
+            local isShotgun, isSniper, currentAmmo = false, false, 1
             
             if slua.isValid(weapon) then
                 local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
@@ -5604,7 +5601,6 @@ do
                 if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then 
                     isShotgun = true 
                 end
-                
                 if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then
                     isSniper = true
                 end
@@ -5631,6 +5627,7 @@ do
 
             if isShotgun and currentAmmo <= 0 then return end
 
+            -- Default Values
             local cond, prioMode, boneIdx, speedVal, fovVal, maxDistMeters = 2, 1, 1, 50, 30, 50
             local useVisCheck, igKnock, igBot, predVal, recoilCompVal = false, false, false, 0, 0
 
@@ -5646,7 +5643,9 @@ do
                 useVisCheck = _G.LexusConfig.AimTouchSGVisCheck
                 igKnock = _G.LexusConfig.AimTouchSGIgKnock
                 igBot = _G.LexusConfig.AimTouchSGIgBot
+                
             elseif isADS then
+                -- Scope Mode FIXED
                 if isSniper and _G.LexusConfig.AimTouchScopeSniper then
                     cond = _G.LexusState.CustomTextData.AimTouchSniperCond or 2
                     if cond == 1 and not isFiring then return end
@@ -5676,6 +5675,7 @@ do
                     return
                 end
             else
+                -- Hipfire Mode FIXED
                 if not _G.LexusConfig.AimTouchHipfire then return end
                 cond = _G.LexusState.CustomTextData.AimTouchHipCond or 1
                 if cond == 1 and not isFiring then return end 
@@ -5698,7 +5698,7 @@ do
             local camLoc = camManager:GetCameraLocation()
             if not camLoc then return end
             
-                        local viewportSize = nil
+            local viewportSize = nil
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X or viewportSize.X <= 0 then return end
             
@@ -5836,12 +5836,13 @@ do
             if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
             if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
             
+            -- ✅ FIX: Smooth Aim Logic (No Twitching)
             local smoothFactor = 0.0
             if speedVal >= 100 then
                 smoothFactor = 1.0
             else
-                smoothFactor = (speedVal / 100.0) * 0.3
-                if smoothFactor < 0.01 then smoothFactor = 0.01 end
+                smoothFactor = (speedVal / 100.0) * 0.8 -- Pehle 0.3 tha, isko 0.8 kiya taake smooth aur fast ho
+                if smoothFactor < 0.05 then smoothFactor = 0.05 end
             end
             
             local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
@@ -5900,7 +5901,7 @@ do
 end
 -- ============================================================================
 -- END NAYA AIMBOT SYSTEM V2
--- ============================================================================
+-- =============================================================================================================================
 
 -- Preserve the reference's DrawDyeing/Highlight/IdeaOutline settings and cadence.
 -- Deduplicate mesh identities; do not assume the game leaves material flags alone.
