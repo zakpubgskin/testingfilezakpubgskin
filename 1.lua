@@ -5593,34 +5593,29 @@ do
         return result
     end
 
-    _G.AimTouchv2 = function()
+    _G.AimTouchV2 = function()
     pcall(function()
         if not _G.LexusConfig.AimTouchEnable then return end
         
         local player = GameplayData.GetPlayerCharacter()
-        if not slua.isValid(player) then return end
+        if not (slua and slua.isValid and slua.isValid(player)) then return end
         
         local pc = player:GetPlayerControllerSafety()
-        if not slua.isValid(pc) then return end
+        if not (slua and slua.isValid and slua.isValid(pc)) then return end
         
         local isFiring = player.bIsWeaponFiring
--- ✅ REPLACE:
-local isADS = player.bIsGunADS
--- ✅ SE:
-local isADS = false
-pcall(function()
-    isADS = player.bIsGunADS == true 
-        or player.bIsAiming == true
-        or player.bIsWeaponAiming == true
-end)
-pcall(function()
-    if not isADS then
-        local cam = player.ThirdPersonCameraComponent
-        if slua.isValid(cam) and cam.FieldOfView and cam.FieldOfView < 75 then
-            isADS = true
-        end
-    end
-end)
+        -- 🔧 FIX #1: 'local isADS' DOBARA declare ho raha tha (syntax error) — ek hi rakha
+        local isADS = player.bIsGunADS == true 
+            or player.bIsAiming == true
+            or player.bIsWeaponAiming == true
+        pcall(function()
+            if not isADS then
+                local cam = player.ThirdPersonCameraComponent
+                if slua.isValid(cam) and cam.FieldOfView and cam.FieldOfView < 75 then
+                    isADS = true
+                end
+            end
+        end)
         
         local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
         if not weapon and type(player.GetCurrentShootWeapon) == "function" then
@@ -5668,9 +5663,10 @@ end)
         local cond = 2
         local prioMode = 1
         local boneIdx = 1
-        local speedVal = 50
+        -- 🔧 FIX #4: speedVal 50→85, maxDist 50→100 (was too weak)
+        local speedVal = 85
         local fovVal = 30
-        local maxDistMeters = 50
+        local maxDistMeters = 100
         local useVisCheck = false
         local igKnock = false
         local igBot = false
@@ -5683,7 +5679,7 @@ end)
             if cond == 1 and not isFiring then return end
             prioMode = _G.LexusState.CustomTextData.AimTouchSGPrio or 1
             boneIdx = _G.LexusState.CustomTextData.AimTouchSGBone or 2
-if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
+            if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
             speedVal = _G.LexusState.CustomTextData.AimTouchSGSpeed or 80
             fovVal = _G.LexusState.CustomTextData.AimTouchSGFOV or 40
             maxDistMeters = _G.LexusState.CustomTextData.AimTouchSGDist or 30
@@ -5692,12 +5688,12 @@ if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
             igBot = _G.LexusConfig.AimTouchSGIgBot
             
         elseif (isADS or player.bIsGunADS or player.IsAiming) then
-    if isSniper and _G.LexusConfig.AimTouchScopeSniper then
+            if isSniper and _G.LexusConfig.AimTouchScopeSniper then
                 cond = _G.LexusState.CustomTextData.AimTouchSniperCond or 2
                 if cond == 1 and not isFiring then return end
                 prioMode = _G.LexusState.CustomTextData.AimTouchSniperPrio or 1
                 boneIdx = _G.LexusState.CustomTextData.AimTouchSniperBone or 1
-if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
+                if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
                 speedVal = _G.LexusState.CustomTextData.AimTouchSniperSpeed or 30
                 fovVal = _G.LexusState.CustomTextData.AimTouchSniperFOV or 20
                 maxDistMeters = _G.LexusState.CustomTextData.AimTouchSniperDist or 400
@@ -5710,7 +5706,7 @@ if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
                 if cond == 1 and not isFiring then return end
                 prioMode = _G.LexusState.CustomTextData.AimTouchScopePrio or 1
                 boneIdx = _G.LexusState.CustomTextData.AimTouchScopeBone or 2
-if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 2 end
+                if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 2 end
                 speedVal = _G.LexusState.CustomTextData.AimTouchScopeSpeed or 40
                 fovVal = _G.LexusState.CustomTextData.AimTouchScopeFOV or 20
                 maxDistMeters = _G.LexusState.CustomTextData.AimTouchScopeDist or 300
@@ -5728,7 +5724,7 @@ if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 2 end
             if cond == 1 and not isFiring then return end 
             prioMode = _G.LexusState.CustomTextData.AimTouchHipPrio or 1
             boneIdx = _G.LexusState.CustomTextData.AimTouchHipBone or 1
-if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
+            if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
             speedVal = _G.LexusState.CustomTextData.AimTouchHipSpeed or 50
             fovVal = _G.LexusState.CustomTextData.AimTouchHipFOV or 30
             maxDistMeters = _G.LexusState.CustomTextData.AimTouchHipDist or 250
@@ -5766,113 +5762,134 @@ if type(boneIdx) ~= "number" or boneIdx < 1 or boneIdx > 4 then boneIdx = 1 end
         local bestTarget = nil
         local bestScore = 99999999 
         
-        -- ✅ FIX: Bone target with proper logging
-local selBoneName = "head"
-if boneIdx == 1 then selBoneName = "head"
-elseif boneIdx == 2 then selBoneName = "spine_03"
-elseif boneIdx == 3 then selBoneName = "spine_01"
-elseif boneIdx == 4 then selBoneName = "pelvis"
-else selBoneName = "head" end
+        -- ✅ Bone target
+        local selBoneName = "head"
+        if boneIdx == 1 then selBoneName = "head"
+        elseif boneIdx == 2 then selBoneName = "spine_03"
+        elseif boneIdx == 3 then selBoneName = "spine_01"
+        elseif boneIdx == 4 then selBoneName = "pelvis"
+        else selBoneName = "head" end
 
+        -- 🔧 FIX #2: goto continue → repeat...until true + break (Lua 5.1 compatible)
         for i, target in ipairs(enemies) do
-            if not slua.isValid(target) then goto continue end
-            
-            pcall(function()
-                if slua.isValid(target.Mesh) then
-                    target.Mesh.MeshComponentUpdateFlag = 0
+            repeat
+                if not slua.isValid(target) then break end
+                
+                pcall(function()
+                    if slua.isValid(target.Mesh) then
+                        target.Mesh.MeshComponentUpdateFlag = 0
+                    end
+                end)
+                
+                if igKnock and target.HealthStatus == 1 then break end
+                
+                if igBot then
+                    local tIsBot = false
+                    if target.bIsAI == true or target.IsAI == true then tIsBot = true end
+                    local pState = target.PlayerState
+                    if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
+                    if tIsBot then break end
                 end
-            end)
-            
-            if igKnock and target.HealthStatus == 1 then goto continue end
-            
-            if igBot then
-                local tIsBot = false
-                if target.bIsAI == true or target.IsAI == true then tIsBot = true end
-                local pState = target.PlayerState
-                if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
-                if tIsBot then goto continue end
-            end
-            
-            if useVisCheck then
-                local curTime = os.clock()
-                local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
-                _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
-                    local isHidden = true
-                    pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
-                    _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
+                
+                if useVisCheck then
+                    local curTime = os.clock()
+                    local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
+                    _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                    if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
+                        local isHidden = true
+                        pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
+                        _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
+                    end
+                    if _G.AimTouchVisCache[tId].hidden then break end
                 end
-                if _G.AimTouchVisCache[tId].hidden then goto continue end
-            end
-            
-            local tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
-if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-    if type(target.GetSocketLocation) == "function" then
-        tPos = target:GetSocketLocation(selBoneName)
-    end
-end
--- ✅ YEH ADD KARO - Fallback for bone target
-if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-    if type(target.K2_GetActorLocation) == "function" then
-        tPos = target:K2_GetActorLocation()
-        if tPos then
-            -- Bone target ke hisaab se Z offset
-            if boneIdx == 1 then tPos.Z = tPos.Z + 70
-            elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
-            elseif boneIdx == 3 then tPos.Z = tPos.Z + 20
-            elseif boneIdx == 4 then tPos.Z = tPos.Z + 0
-            else tPos.Z = tPos.Z + 70 end
-        end
-    end
-end
-            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
-            
-            local screen = FVector2D()
-            local success = pc:ProjectWorldLocationToScreen(tPos, screen, false)
-            if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
-            
-            local dx = screen.X - centerX
-            local dy = screen.Y - centerY
-            local distScreen = math.sqrt(dx*dx + dy*dy)
-            
-            if distScreen > FOV_RADIUS then goto continue end
-            
-            local currentScore = distScreen
-            if prioMode == 2 then currentScore = player:GetDistanceTo(target)
-            elseif prioMode == 3 then currentScore = target.Health or 100
-            elseif prioMode == 4 then 
-                local hp = target.Health or 100
-                local maxhp = target.HealthMax or 100
-                if maxhp <= 0 then maxhp = 100 end
-                currentScore = hp / maxhp
-            end
-            
-            if currentScore < bestScore then
-                bestScore = currentScore
-                bestTarget = target
-            end
-            
-            ::continue::
+                
+                -- 🔧 FIX #3: type() check — GetBonePos nil ho sakta hai
+                local tPos = nil
+                pcall(function()
+                    if type(target.GetBonePos) == "function" then
+                        tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+                    end
+                end)
+                
+                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
+                    if type(target.GetSocketLocation) == "function" then
+                        pcall(function() tPos = target:GetSocketLocation(selBoneName) end)
+                    end
+                end
+                
+                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
+                    if type(target.K2_GetActorLocation) == "function" then
+                        pcall(function()
+                            tPos = target:K2_GetActorLocation()
+                            if tPos then
+                                if boneIdx == 1 then tPos.Z = tPos.Z + 70
+                                elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
+                                elseif boneIdx == 3 then tPos.Z = tPos.Z + 20
+                                elseif boneIdx == 4 then tPos.Z = tPos.Z + 0
+                                else tPos.Z = tPos.Z + 70 end
+                            end
+                        end)
+                    end
+                end
+                
+                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then break end
+                
+                local screen = FVector2D()
+                local success, outScreen = pc:ProjectWorldLocationToScreen(tPos, screen, false)
+                if outScreen then screen = outScreen end
+                if not success or screen.X <= 0 or screen.Y <= 0 then break end
+                
+                local dx = screen.X - centerX
+                local dy = screen.Y - centerY
+                local distScreen = math.sqrt(dx*dx + dy*dy)
+                
+                if distScreen > FOV_RADIUS then break end
+                
+                local currentScore = distScreen
+                if prioMode == 2 then currentScore = player:GetDistanceTo(target)
+                elseif prioMode == 3 then currentScore = target.Health or 100
+                elseif prioMode == 4 then 
+                    local hp = target.Health or 100
+                    local maxhp = target.HealthMax or 100
+                    if maxhp <= 0 then maxhp = 100 end
+                    currentScore = hp / maxhp
+                end
+                
+                if currentScore < bestScore then
+                    bestScore = currentScore
+                    bestTarget = target
+                end
+            until true
         end
         
-        if not slua.isValid(bestTarget) then return end
+        if not (slua and slua.isValid and slua.isValid(bestTarget)) then return end
         
-        local finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+        local finalBonePos = nil
+        pcall(function()
+            if type(bestTarget.GetBonePos) == "function" then
+                finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+            end
+        end)
+        
         if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
             if type(bestTarget.GetSocketLocation) == "function" then
-                finalBonePos = bestTarget:GetSocketLocation(selBoneName)
+                pcall(function() finalBonePos = bestTarget:GetSocketLocation(selBoneName) end)
             end
         end
+        
         if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
             if type(bestTarget.K2_GetActorLocation) == "function" then
-                finalBonePos = bestTarget:K2_GetActorLocation()
-                if finalBonePos then
-                    if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 70
-                    elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 40
-                    elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 20 end
-                end
+                pcall(function()
+                    finalBonePos = bestTarget:K2_GetActorLocation()
+                    if finalBonePos then
+                        if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 70
+                        elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 40
+                        elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 20 end
+                    end
+                end)
             end
         end
+        
         if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
         
         if predVal > 0 then
@@ -5890,6 +5907,14 @@ end
                 end
             end)
         end
+        
+        -- 🔧 FIX #7: AIM ADJUST slider ab real Z offset karega (was missing)
+        if isADS then
+            local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
+            if aimAdjust ~= 50 then
+                finalBonePos.Z = finalBonePos.Z - ((aimAdjust - 50) * 2.5)
+            end
+        end
 
         local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
         if not rot then return end
@@ -5900,14 +5925,15 @@ end
         local deltaYaw = rot.Yaw - currentRot.Yaw
         local deltaPitch = rot.Pitch - currentRot.Pitch
         
+        -- 🔧 FIX #6: ADS double subtraction → HALF (was causing 30m overshoot / sky snap)
         if isADS then
             local camRot = nil
             if type(camManager.GetCameraRotation) == "function" then
                 camRot = camManager:GetCameraRotation()
             end
             if camRot then
-                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
-                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
+                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw) * 0.5
+                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch) * 0.5
             end
         end
 
@@ -5916,12 +5942,22 @@ end
         if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
         if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
         
+        -- 🔧 FIX #5: smoothFactor max 0.6 + 8° hard cap (was 1.0 → sky snap)
         local smoothFactor = 0.0
         if speedVal >= 100 then
-            smoothFactor = 1.0
+            smoothFactor = 0.6
         else
-            smoothFactor = (speedVal / 100.0) * 0.3
-            if smoothFactor < 0.01 then smoothFactor = 0.01 end
+            smoothFactor = (speedVal / 100.0) * 0.35
+            if smoothFactor < 0.02 then smoothFactor = 0.02 end
+        end
+        
+        -- 🔧 FIX #5b: HARD CAP — max 8° per frame
+        local maxStep = 8
+        local yawStepAbs = math.abs(deltaYaw * smoothFactor)
+        local pitchStepAbs = math.abs(deltaPitch * smoothFactor)
+        if yawStepAbs > maxStep or pitchStepAbs > maxStep then
+            local scale = maxStep / math.max(yawStepAbs, pitchStepAbs)
+            smoothFactor = smoothFactor * scale
         end
         
         local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
@@ -5953,42 +5989,48 @@ end
                 end
             end)
         end
-
     end)
 end
+
+-- 🔧 FIX #8: Ye block OUTER scope mein tha — 'localPlayer', 'pc', 'Valid' undefined the
+-- Ab pcall ke andar wrap + safe guards
 pcall(function()
-        if _G.LexusConfig.CustomAimbot and localPlayer.bIsWeaponFiring and localPlayer.bIsGunADS then
-            local outerRecoilVal = _G.LexusState.CustomTextData.OuterRecoil or 0
-            if outerRecoilVal > 0 then
-                local curTime = os.clock()
+    local lPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+    if not lPlayer or not slua.isValid(lPlayer) then return end
+    local lPc = lPlayer:GetPlayerControllerSafety()
+    if not lPc or not slua.isValid(lPc) then return end
+    
+    if _G.LexusConfig.CustomAimbot and lPlayer.bIsWeaponFiring and lPlayer.bIsGunADS then
+        local outerRecoilVal = _G.LexusState.CustomTextData.OuterRecoil or 0
+        if outerRecoilVal > 0 then
+            local curTime = os.clock()
+            
+            if not _G.RecoilTargetCacheTime or (curTime - _G.RecoilTargetCacheTime) > 0.2 then
+                _G.RecoilTargetCacheTime = curTime
+                _G.HasRecoilTargetCached = false
                 
-                if not _G.RecoilTargetCacheTime or (curTime - _G.RecoilTargetCacheTime) > 0.2 then
-                    _G.RecoilTargetCacheTime = curTime
-                    _G.HasRecoilTargetCached = false
-                    
-                    local ui_util = require("client.common.ui_util")
-                    if ui_util then
-                        local viewportSize = ui_util.GetViewportSize()
-                        if viewportSize then
-                            local centerX = viewportSize.X * 0.5
-                            local centerY = viewportSize.Y * 0.5
-                            local FOV_RADIUS = (6 / 100.0) * (viewportSize.X / 2.0) 
-                            
-                            local enemies = _G.GetEnemyTargetsFromActors(40000) 
-                            if enemies and #enemies > 0 then
-                                local FVector2D = import("Vector2D")
-                                for _, target in ipairs(enemies) do
-                                    if slua.isValid(target) and target.HealthStatus ~= 1 then 
-                                        local tPos = type(target.K2_GetActorLocation) == "function" and target:K2_GetActorLocation() or nil
-                                        if tPos then
-                                            local screen = FVector2D()
-                                            if pc:ProjectWorldLocationToScreen(tPos, screen, false) and screen.X > 0 and screen.Y > 0 then
-                                                local dx = screen.X - centerX
-                                                local dy = screen.Y - centerY
-                                                if math.sqrt(dx*dx + dy*dy) <= FOV_RADIUS then
-                                                    _G.HasRecoilTargetCached = true
-                                                    break 
-                                                end
+                local ui_util = require("client.common.ui_util")
+                if ui_util then
+                    local viewportSize = ui_util.GetViewportSize()
+                    if viewportSize then
+                        local centerX = viewportSize.X * 0.5
+                        local centerY = viewportSize.Y * 0.5
+                        local FOV_RADIUS = (6 / 100.0) * (viewportSize.X / 2.0) 
+                        
+                        local enemies = _G.GetEnemyTargetsFromActors(40000) 
+                        if enemies and #enemies > 0 then
+                            local FVector2D = import("Vector2D")
+                            for _, target in ipairs(enemies) do
+                                if slua.isValid(target) and target.HealthStatus ~= 1 then 
+                                    local tPos = type(target.K2_GetActorLocation) == "function" and target:K2_GetActorLocation() or nil
+                                    if tPos then
+                                        local screen = FVector2D()
+                                        if lPc:ProjectWorldLocationToScreen(tPos, screen, false) and screen.X > 0 and screen.Y > 0 then
+                                            local dx = screen.X - centerX
+                                            local dy = screen.Y - centerY
+                                            if math.sqrt(dx*dx + dy*dy) <= FOV_RADIUS then
+                                                _G.HasRecoilTargetCached = true
+                                                break 
                                             end
                                         end
                                     end
@@ -5997,87 +6039,104 @@ pcall(function()
                         end
                     end
                 end
+            end
 
-                if _G.HasRecoilTargetCached then
-                    local currentRot = pc:GetControlRotation()
-                    if currentRot then
-                        local pullDownForce = (outerRecoilVal / 50.0) * 1.5
-                        currentRot.Pitch = currentRot.Pitch - pullDownForce
-                        pc:SetControlRotation(currentRot, "CustomAimbotRecoil")
-                    end
+            if _G.HasRecoilTargetCached then
+                local currentRot = lPc:GetControlRotation()
+                if currentRot then
+                    local pullDownForce = (outerRecoilVal / 50.0) * 1.5
+                    currentRot.Pitch = currentRot.Pitch - pullDownForce
+                    lPc:SetControlRotation(currentRot, "CustomAimbotRecoil")
                 end
+            end
+        end
+    else
+        _G.HasRecoilTargetCached = false
+    end
+end)
+
+-- 🔧 FIX #8b: 'pc' aur 'Valid' outer scope mein nil the — ab pcall ke andar safe
+pcall(function()
+    local lPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+    if not lPlayer or not slua.isValid(lPlayer) then return end
+    local lPc = lPlayer:GetPlayerControllerSafety()
+    if not lPc or not slua.isValid(lPc) then return end
+    
+    if lPc.HiggsBoson then lPc.HiggsBoson.bMHActive = false; lPc.HiggsBoson.bCallPreReplication = false end
+    if lPc.HiggsBosonComponent then lPc.HiggsBosonComponent.bMHActive = false; lPc.HiggsBosonComponent.bCallPreReplication = false end
+end)
+
+-- 🔧 FIX #8c: 'localPlayer' undefined tha — safe guard
+pcall(function()
+    local lPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+    if not lPlayer or not slua.isValid(lPlayer) then return end
+    
+    local autoComp = lPlayer.AutoAimComp
+    if autoComp and slua.isValid(autoComp) then
+        if not _G.LexusState.OrigAutoAimCompCached then
+            _G.LexusState.OrigAutoAimCompCached = {
+                bOnlyHitHead = autoComp.bOnlyHitHead,
+                HeadBoneName = autoComp.HeadBoneName,
+                Bones = autoComp.Bones,
+                ChestBoneName = autoComp.ChestBoneName,
+                PelvisBoneName = autoComp.PelvisBoneName,
+                HeadPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.HeadPriority,
+                ChestPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.ChestPriority,
+                PelvisPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.PelvisPriority
+            }
+        end
+        
+        if _G.LexusConfig.AutoHead then
+            autoComp.bOnlyHitHead = true
+            autoComp.HeadBoneName = "Head"
+            pcall(function() autoComp.Bones = {"Head"} end)
+            autoComp.ChestBoneName = "Head"
+            autoComp.PelvisBoneName = "Head"
+            if autoComp.AimAssistConfig then
+                autoComp.AimAssistConfig.HeadPriority = 100
+                autoComp.AimAssistConfig.ChestPriority = 100
+                autoComp.AimAssistConfig.PelvisPriority = 100
             end
         else
-            _G.HasRecoilTargetCached = false
-        end
-    end)
-
-    pcall(function()
-        if Valid(pc) then
-            if pc.HiggsBoson then pc.HiggsBoson.bMHActive = false; pc.HiggsBoson.bCallPreReplication = false end
-            if pc.HiggsBosonComponent then pc.HiggsBosonComponent.bMHActive = false; pc.HiggsBosonComponent.bCallPreReplication = false end
-        end
-    end)
-
-    pcall(function()
-        local autoComp = localPlayer.AutoAimComp
-        if Valid(autoComp) then
-            if not _G.LexusState.OrigAutoAimCompCached then
-                _G.LexusState.OrigAutoAimCompCached = {
-                    bOnlyHitHead = autoComp.bOnlyHitHead,
-                    HeadBoneName = autoComp.HeadBoneName,
-                    Bones = autoComp.Bones,
-                    ChestBoneName = autoComp.ChestBoneName,
-                    PelvisBoneName = autoComp.PelvisBoneName,
-                    HeadPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.HeadPriority,
-                    ChestPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.ChestPriority,
-                    PelvisPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.PelvisPriority
-                }
+            local orig = _G.LexusState.OrigAutoAimCompCached
+            autoComp.bOnlyHitHead = orig.bOnlyHitHead
+            autoComp.HeadBoneName = orig.HeadBoneName
+            pcall(function() autoComp.Bones = orig.Bones or {"Spine_01", "Pelvis", "Head"} end)
+            autoComp.ChestBoneName = orig.ChestBoneName
+            autoComp.PelvisBoneName = orig.PelvisBoneName
+            if autoComp.AimAssistConfig then
+                autoComp.AimAssistConfig.HeadPriority = orig.HeadPriority or 1
+                autoComp.AimAssistConfig.ChestPriority = orig.ChestPriority or 1
+                autoComp.AimAssistConfig.PelvisPriority = orig.PelvisPriority or 1
             end
-            
-            if _G.LexusConfig.AutoHead then
-                autoComp.bOnlyHitHead = true
-                autoComp.HeadBoneName = "Head"
-                pcall(function() autoComp.Bones = {"Head"} end)
-                autoComp.ChestBoneName = "Head"
-                autoComp.PelvisBoneName = "Head"
-                if autoComp.AimAssistConfig then
-                    autoComp.AimAssistConfig.HeadPriority = 100
-                    autoComp.AimAssistConfig.ChestPriority = 100
-                    autoComp.AimAssistConfig.PelvisPriority = 100
-                end
-            else
-                local orig = _G.LexusState.OrigAutoAimCompCached
-                autoComp.bOnlyHitHead = orig.bOnlyHitHead
-                autoComp.HeadBoneName = orig.HeadBoneName
-                pcall(function() autoComp.Bones = orig.Bones or {"Spine_01", "Pelvis", "Head"} end)
-                autoComp.ChestBoneName = orig.ChestBoneName
-                autoComp.PelvisBoneName = orig.PelvisBoneName
-                if autoComp.AimAssistConfig then
-                    autoComp.AimAssistConfig.HeadPriority = orig.HeadPriority or 1
-                    autoComp.AimAssistConfig.ChestPriority = orig.ChestPriority or 1
-                    autoComp.AimAssistConfig.PelvisPriority = orig.PelvisPriority or 1
-                end
-            end
-        end
-    end)
-    -- 60 FPS Loop Start
-    local function FastAimbotTickV2()
-        pcall(function()
-            if _G.LexusConfig.AimTouchEnable then
-                _G.AimTouchV2()
-            end
-        end)
-        local okTicker, ticker = pcall(require, "common.time_ticker")
-        if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
         end
     end
+end)
 
+-- 60 FPS Loop Start
+-- 🔧 FIX #10: Error print add (silent pcall se debug nahi ho raha tha)
+local function FastAimbotTickV2()
+    local ok, err = pcall(function()
+        if _G.LexusConfig.AimTouchEnable then
+            if type(_G.AimTouchV2) == "function" then
+                _G.AimTouchV2()
+            else
+                print("[AimV2] CRITICAL: _G.AimTouchV2 is not a function!")
+            end
+        end
+    end)
+    if not ok then
+        print("[AimV2] Error:", tostring(err))
+    end
     local okTicker, ticker = pcall(require, "common.time_ticker")
     if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
+        ticker.AddTimerOnce(0.016, FastAimbotTickV2)
     end
+end
+
+local okTicker, ticker = pcall(require, "common.time_ticker")
+if okTicker and ticker and ticker.AddTimerOnce then
+    ticker.AddTimerOnce(0.5, FastAimbotTickV2)
 end
 -- ============================================================================
 -- END WORKING AIMBOT SYSTEM
