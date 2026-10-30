@@ -5822,12 +5822,12 @@ do
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
                         -- ✅ AIM ADJUST (Low/High)
+                        -- ✅ AIM ADJUST (Smooth & Linear - 1% change par bhi farq)
             local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
             if isADS then
-                -- Slider se aim ko upar/neeche adjust karein
-                -- Agar slider 50 se kam (aim neeche), toh Z minus
-                -- Agar slider 50 se zyada (aim upar), toh Z plus
-                local adjustOffset = (aimAdjust - 50) * 0.5
+                -- Har 1% par 0.2 units ka farq
+                -- 5% = 1 unit, 10% = 2 units, 20% = 4 units
+                local adjustOffset = (aimAdjust - 50) * 0.2
                 finalBonePos.Z = finalBonePos.Z + adjustOffset
             end
             
