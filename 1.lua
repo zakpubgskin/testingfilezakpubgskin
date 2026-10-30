@@ -5700,9 +5700,25 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
+            -- ✅ FIX: Scope Center & FOV Adjust (HAMESHA ON)
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
-            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
+            
+            if isADS then
+                local camRot = nil
+                pcall(function() camRot = camManager:GetCameraRotation() end)
+                local ctrlRot = nil
+                pcall(function() ctrlRot = pc:GetControlRotation() end)
+                if camRot and ctrlRot then
+                    local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
+                    if yawDiff > 180 then yawDiff = yawDiff - 360 end
+                    centerX = centerX + (yawDiff * 12.0)
+                end
+            end
+
+            local fovMultiplier = 1.0
+            if isADS then fovMultiplier = 1.3 end
+            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
             
             local bestTarget = nil
             local bestScore = 99999999 
@@ -5820,12 +5836,10 @@ do
             
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
-            -- ✅ AIM ADJUST (Low/High) - FIXED FOR ADS
-            local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
+            -- ✅ FIX: Low/High Adjust (Scope mein aim neeche karein)
             if isADS then
-                -- Sirf 0.5 units per % change taake 5% par bhi aim theek rahe
-                local adjustOffset = (aimAdjust - 50) * 0.5
-                finalBonePos.Z = finalBonePos.Z + adjustOffset
+                local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
+                finalBonePos.Z = finalBonePos.Z - ((aimAdjust - 50) * 0.5)
             end
             
             local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
@@ -5837,7 +5851,6 @@ do
             local deltaYaw = rot.Yaw - currentRot.Yaw
             local deltaPitch = rot.Pitch - currentRot.Pitch
             
-            -- ✅ FIX: ADS Camera Alignment (Bhaagna band)
             if isADS then
                 local camRot = nil
                 if type(camManager.GetCameraRotation) == "function" then
@@ -5888,6 +5901,24 @@ do
             end
         end)
     end
+    -- 60 FPS Loop Start
+    local function FastAimbotTickV2()
+        pcall(function()
+            if _G.LexusConfig.AimTouchEnable then
+                _G.AimTouchV2()
+            end
+        end)
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
+        end
+    end
+
+    local okTicker, ticker = pcall(require, "common.time_ticker")
+    if okTicker and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
+    end
+end
     -- 60 FPS Loop Start
     local function FastAimbotTickV2()
         pcall(function()
