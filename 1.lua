@@ -5590,45 +5590,7 @@ do
         return result
     end
 
-    _G.AimTouchV2 = function()
-        pcall(function()
-            if not _G.LexusConfig.AimTouchEnable then return end
-            
-            local player = GameplayData.GetPlayerCharacter()
-            if not (slua and slua.isValid and slua.isValid(player)) then return end
-            
-            local pc = player:GetPlayerControllerSafety()
-            if not (slua and slua.isValid and slua.isValid(pc)) then return end
-            
-            local isFiring = player.bIsWeaponFiring
-            
-            -- Scope/ADS Detection
-            local isADS = player.bIsGunADS == true or player.bIsAiming == true or player.bIsWeaponAiming == true
-            pcall(function()
-                if not isADS then
-                    local cam = player.ThirdPersonCameraComponent
-                    if slua.isValid(cam) and cam.FieldOfView and cam.FieldOfView < 75 then isADS = true end
-                end
-            end)
-            
-            local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
-            if not weapon and type(player.GetCurrentShootWeapon) == "function" then weapon = player:GetCurrentShootWeapon() end
-            
-            local isShotgun, isSniper, currentAmmo = false, false, 1
-            if slua.isValid(weapon) then
-                local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
-                local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
-                if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then isShotgun = true end
-                if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then isSniper = true end
-                
-                if type(weapon.GetCurrentAmmo) == "function" then currentAmmo = weapon:GetCurrentAmmo()
-                elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then currentAmmo = weapon.ShootWeaponComponent:GetCurrentAmmo()
-                elseif weapon.CurrentAmmo ~= nil then currentAmmo = weapon.CurrentAmmo end
-            end
-
-            if _G.LexusState.IsAutoFiring then
-                pcall(function()
-                    player.bIsWeaponFiring = false    _G.AimTouchV2 = function()
+        _G.AimTouchV2 = function()
         pcall(function()
             if not _G.LexusConfig.AimTouchEnable then return end
             
@@ -5737,7 +5699,7 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
-            -- ✅ FIX: Scope Center & FOV Adjust (Sirf jab ADSFix ON ho)
+            -- ADS Scope Center Fix
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
             
@@ -5760,7 +5722,6 @@ do
             local bestTarget = nil
             local bestScore = 99999999 
             
-            -- ✅ FIX: Correct Bone Names
             local selBoneName = "Head"
             if boneIdx == 1 then selBoneName = "Head"
             elseif boneIdx == 2 then selBoneName = "Spine_03" 
@@ -5812,7 +5773,6 @@ do
                         if type(target.K2_GetActorLocation) == "function" then
                             tPos = target:K2_GetActorLocation()
                             if tPos then 
-                                -- ✅ FIX: Low/High adjust
                                 if boneIdx == 1 then tPos.Z = tPos.Z + 60
                                 elseif boneIdx == 2 then tPos.Z = tPos.Z + 30
                                 elseif boneIdx == 3 then tPos.Z = tPos.Z + 10
@@ -5875,9 +5835,8 @@ do
             
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
-            -- ✅ FIX: Low/High Adjust (Agar aim upar jata hai toh Z kam karein)
             if _G.LexusConfig.AimTouchADSFix and isADS then
-                finalBonePos.Z = finalBonePos.Z - 10 -- Scope mein thoda neeche aim karein
+                finalBonePos.Z = finalBonePos.Z - 10
             end
             
             local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
