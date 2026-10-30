@@ -5799,7 +5799,7 @@ do
                         bestScore = distScreen
                         bestTarget = target
                     end
-                    ::continue::
+                  
                 end
                 
                 if not slua.isValid(bestTarget) then return end
