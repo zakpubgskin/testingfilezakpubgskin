@@ -5901,24 +5901,7 @@ do
             end
         end)
     end
-    -- 60 FPS Loop Start
-    local function FastAimbotTickV2()
-        pcall(function()
-            if _G.LexusConfig.AimTouchEnable then
-                _G.AimTouchV2()
-            end
-        end)
-        local okTicker, ticker = pcall(require, "common.time_ticker")
-        if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
-        end
-    end
 
-    local okTicker, ticker = pcall(require, "common.time_ticker")
-    if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
-    end
-end
     -- 60 FPS Loop Start
     local function FastAimbotTickV2()
         pcall(function()
