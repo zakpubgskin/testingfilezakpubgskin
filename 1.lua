@@ -1793,6 +1793,7 @@ do
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopePred or 0 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopePred = v; return true end},
                         -- ================= ADS FIX =================
+               
                 -- ================= AIM ADJUST (Low/High) =================
         {Key="LunarAimV2_Adjust",UI=AliasMap.Slider,Text="Aim Adjust (0-100)",ExpandHandle="LunarAimV2_Main",Min=0,Max=100,
             GetFunc=function() return _G.LexusState.CustomTextData.AimAdjust or 50 end,
@@ -5591,7 +5592,7 @@ do
         return result
     end
 
-    _G.AimTouchV2 = function()
+        _G.AimTouchV2 = function()
         pcall(function()
             if not _G.LexusConfig.AimTouchEnable then return end
             
@@ -5700,7 +5701,7 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
-            -- ✅ FIX: Scope Center & FOV Adjust (HAMESHA ON)
+            -- ✅ FIX: ADS Hamesha ON (Camera Alignment)
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
             
@@ -5836,7 +5837,7 @@ do
             
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
-            -- ✅ FIX: Low/High Adjust (Scope mein aim neeche karein)
+            -- ✅ FIX: Aim Adjust (Slider se neeche/upar karein)
             if isADS then
                 local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
                 finalBonePos.Z = finalBonePos.Z - ((aimAdjust - 50) * 0.5)
@@ -5901,7 +5902,6 @@ do
             end
         end)
     end
-
     -- 60 FPS Loop Start
     local function FastAimbotTickV2()
         pcall(function()
@@ -5919,7 +5919,6 @@ do
     if okTicker and ticker and ticker.AddTimerOnce then
         ticker.AddTimerOnce(0.5, FastAimbotTickV2)
     end
-end
 -- ============================================================================
 -- END WORKING AIMBOT SYSTEM
 -- ============================================================================
