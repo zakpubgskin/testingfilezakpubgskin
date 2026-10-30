@@ -5783,27 +5783,34 @@ do
             local currentRot = pc:GetControlRotation()
             if not currentRot then return end
             
-            local deltaYaw = rot.Yaw - currentRot.Yaw
+                       local deltaYaw = rot.Yaw - currentRot.Yaw
             local deltaPitch = rot.Pitch - currentRot.Pitch
             
+            -- ✅ FIX: ADS Camera Alignment (Scope Aim Fix)
             if isADS then
-                local camRot = type(camManager.GetCameraRotation) == "function" and camManager:GetCameraRotation() or nil
+                local camRot = nil
+                if type(camManager.GetCameraRotation) == "function" then
+                    camRot = camManager:GetCameraRotation()
+                end
                 if camRot then
+                    -- Scope camera aur crosshair ka difference calculate karein
                     deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
                     deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
                 end
             end
 
+            -- Normalize angles (wrap around fix)
             if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
             if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
             if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
             if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
             
+            -- ✅ FIX: Smooth Aim (Anti-Jitter)
             local smoothFactor = 0.0
             if speedVal >= 100 then
                 smoothFactor = 1.0
             else
-                smoothFactor = (speedVal / 100.0) * 0.5
+                smoothFactor = (speedVal / 100.0) * 0.8 -- 0.5 se 0.8 kiya, taake scope mein aim fast ho
                 if smoothFactor < 0.05 then smoothFactor = 0.05 end
             end
             
