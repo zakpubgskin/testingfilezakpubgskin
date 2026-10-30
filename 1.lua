@@ -5697,11 +5697,10 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
-                        -- ✅ FIX: Scope Center & FOV Adjust
+            -- ✅ FIX: Scope Center & FOV Adjust
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
             
-            -- Scope (ADS) ke waqt camera shift adjust karein taake aim left/right na bhage
             if isADS then
                 local camRot = nil
                 pcall(function() camRot = camManager:GetCameraRotation() end)
@@ -5714,7 +5713,6 @@ do
                 end
             end
 
-            -- Scope mein FOV radius thoda bada karein taake target na choote
             local fovMultiplier = 1.0
             if isADS then fovMultiplier = 1.3 end
             local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
@@ -5722,175 +5720,170 @@ do
             local bestTarget = nil
             local bestScore = 99999999 
             
-                        -- ✅ FIX: PUBG Mobile ke sahi Bone Names (Capital Letters)
-                            -- ✅ FIX 1: Capital Letters wale Bone Names use karein
-                local selBoneName = "Head"
-                if boneIdx == 1 then selBoneName = "Head"
-                elseif boneIdx == 2 then selBoneName = "Spine_03" 
-                elseif boneIdx == 3 then selBoneName = "Spine_01" 
-                elseif boneIdx == 4 then selBoneName = "Pelvis"
-                end
+            -- ✅ FIX: Correct Bone Names
+            local selBoneName = "Head"
+            if boneIdx == 1 then selBoneName = "Head"
+            elseif boneIdx == 2 then selBoneName = "Spine_03" 
+            elseif boneIdx == 3 then selBoneName = "Spine_01" 
+            elseif boneIdx == 4 then selBoneName = "Pelvis"
+            end
 
-                for i, target in ipairs(enemies) do
-                    if not slua.isValid(target) then goto continue end
-                    if igKnock and target.HealthStatus == 1 then goto continue end
-                    
-                    if igBot then
-                        local tIsBot = false
-                        if target.bIsAI == true or target.IsAI == true then tIsBot = true end
-                        local pState = target.PlayerState
-                        if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
-                        if tIsBot then goto continue end
-                    end
-                    
-                    if useVisCheck then
-                        local curTime = os.clock()
-                        local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
-                        _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                        if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
-                            local isHidden = true
-                            pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
-                            _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
-                        end
-                        if _G.AimTouchVisCache[tId].hidden then goto continue end
-                    end
-                    
-                    -- ✅ FIX 2: Bone Position Nikalne ka Sahi Tareeqa
-                    local tPos = nil
-                    pcall(function()
-                        if type(target.GetBonePos) == "function" then 
-                            tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0}) 
-                        end
-                    end)
-                    
-                    -- Agar Bone na mile toh Socket try karein
-                    if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                        pcall(function()
-                            if type(target.GetSocketLocation) == "function" then 
-                                tPos = target:GetSocketLocation(selBoneName) 
-                            end
-                        end)
-                    end
-                    
-                    -- Agar phir bhi na mile toh Actor Location (Chest Level) use karein
-                    if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                        pcall(function()
-                            if type(target.K2_GetActorLocation) == "function" then
-                                tPos = target:K2_GetActorLocation()
-                                if tPos then tPos.Z = tPos.Z + 40 end -- Chest level
-                            end
-                        end)
-                    end
-                    
-                    if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
-                    
-                    local screen = FVector2D()
-                    local success, outScreen = pc:ProjectWorldLocationToScreen(tPos, screen, false)
-                    if outScreen then screen = outScreen end
-                    if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
-                    
-                    local dx = screen.X - centerX
-                    local dy = screen.Y - centerY
-                    local distScreen = math.sqrt(dx*dx + dy*dy)
-                    
-                    if distScreen > FOV_RADIUS then goto continue end
-                    
-                    if distScreen < bestScore then
-                        bestScore = distScreen
-                        bestTarget = target
-                    end
-                  
+            for i, target in ipairs(enemies) do
+                if not slua.isValid(target) then goto continue end
+                if igKnock and target.HealthStatus == 1 then goto continue end
+                
+                if igBot then
+                    local tIsBot = false
+                    if target.bIsAI == true or target.IsAI == true then tIsBot = true end
+                    local pState = target.PlayerState
+                    if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
+                    if tIsBot then goto continue end
                 end
                 
-                if not slua.isValid(bestTarget) then return end
+                if useVisCheck then
+                    local curTime = os.clock()
+                    local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
+                    _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                    if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
+                        local isHidden = true
+                        pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
+                        _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
+                    end
+                    if _G.AimTouchVisCache[tId].hidden then goto continue end
+                end
                 
-                -- ✅ FIX 3: Final Bone Position (Same logic as above)
-                local finalBonePos = nil
+                local tPos = nil
                 pcall(function()
-                    if type(bestTarget.GetBonePos) == "function" then 
-                        finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0}) 
+                    if type(target.GetBonePos) == "function" then 
+                        tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0}) 
                     end
                 end)
                 
-                if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
+                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
                     pcall(function()
-                        if type(bestTarget.GetSocketLocation) == "function" then 
-                            finalBonePos = bestTarget:GetSocketLocation(selBoneName) 
+                        if type(target.GetSocketLocation) == "function" then 
+                            tPos = target:GetSocketLocation(selBoneName) 
                         end
                     end)
                 end
                 
-                if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
+                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
                     pcall(function()
-                        if type(bestTarget.K2_GetActorLocation) == "function" then
-                            finalBonePos = bestTarget:K2_GetActorLocation()
-                            if finalBonePos then finalBonePos.Z = finalBonePos.Z + 40 end
+                        if type(target.K2_GetActorLocation) == "function" then
+                            tPos = target:K2_GetActorLocation()
+                            if tPos then tPos.Z = tPos.Z + 40 end
                         end
                     end)
                 end
                 
-                if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
+                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
                 
-                local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
-                if not rot then return end
+                local screen = FVector2D()
+                local success, outScreen = pc:ProjectWorldLocationToScreen(tPos, screen, false)
+                if outScreen then screen = outScreen end
+                if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
                 
-                local currentRot = pc:GetControlRotation()
-                if not currentRot then return end
+                local dx = screen.X - centerX
+                local dy = screen.Y - centerY
+                local distScreen = math.sqrt(dx*dx + dy*dy)
                 
-                -- ✅ FIX 4: ADS Camera Alignment
-                local deltaYaw = rot.Yaw - currentRot.Yaw
-                local deltaPitch = rot.Pitch - currentRot.Pitch
+                if distScreen > FOV_RADIUS then goto continue end
                 
-                if isADS then
-                    local camRot = nil
-                    if type(camManager.GetCameraRotation) == "function" then
-                        camRot = camManager:GetCameraRotation()
+                if distScreen < bestScore then
+                    bestScore = distScreen
+                    bestTarget = target
+                end
+                ::continue::
+            end
+            
+            if not slua.isValid(bestTarget) then return end
+            
+            local finalBonePos = nil
+            pcall(function()
+                if type(bestTarget.GetBonePos) == "function" then 
+                    finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0}) 
+                end
+            end)
+            
+            if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
+                pcall(function()
+                    if type(bestTarget.GetSocketLocation) == "function" then 
+                        finalBonePos = bestTarget:GetSocketLocation(selBoneName) 
                     end
-                    if camRot then
-                        deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
-                        deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
+                end)
+            end
+            
+            if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
+                pcall(function()
+                    if type(bestTarget.K2_GetActorLocation) == "function" then
+                        finalBonePos = bestTarget:K2_GetActorLocation()
+                        if finalBonePos then finalBonePos.Z = finalBonePos.Z + 40 end
                     end
+                end)
+            end
+            
+            if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
+            
+            local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
+            if not rot then return end
+            
+            local currentRot = pc:GetControlRotation()
+            if not currentRot then return end
+            
+            local deltaYaw = rot.Yaw - currentRot.Yaw
+            local deltaPitch = rot.Pitch - currentRot.Pitch
+            
+            if isADS then
+                local camRot = nil
+                if type(camManager.GetCameraRotation) == "function" then
+                    camRot = camManager:GetCameraRotation()
                 end
-
-                -- Normalize angles
-                if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
-                if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
-                if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
-                if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
-                
-                -- ✅ FIX 5: Smooth Aim
-                local smoothFactor = 0.0
-                if speedVal >= 100 then
-                    smoothFactor = 1.0
-                else
-                    smoothFactor = (speedVal / 100.0) * 0.8
-                    if smoothFactor < 0.05 then smoothFactor = 0.05 end
+                if camRot then
+                    deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
+                    deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
                 end
-                
-                local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
-                local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
+            end
 
-                local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
-                pc:SetControlRotation(finalRot, "AimTouchV2")
-                
-                if isShotgun and _G.LexusConfig.AimTouchSGAutoFire then
-                    pcall(function()
-                        local distToTarget = player:GetDistanceTo(bestTarget) / 100
-                        if distToTarget <= maxDistMeters then
-                            player.bIsWeaponFiring = true
-                            if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(true) end
-                            if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
-                            local wepMgr = player.WeaponManagerComponent
-                            if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
-                            
-                            local currentWep = player:GetCurrentWeapon()
-                            if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
-                                currentWep:StartFire() 
-                            end
-                            _G.LexusState.IsAutoFiring = true
+            if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
+            if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+            if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
+            if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
+            
+            local smoothFactor = 0.0
+            if speedVal >= 100 then
+                smoothFactor = 1.0
+            else
+                smoothFactor = (speedVal / 100.0) * 0.8
+                if smoothFactor < 0.05 then smoothFactor = 0.05 end
+            end
+            
+            local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
+            local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
+
+            local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
+            pc:SetControlRotation(finalRot, "AimTouchV2")
+            
+            if isShotgun and _G.LexusConfig.AimTouchSGAutoFire then
+                pcall(function()
+                    local distToTarget = player:GetDistanceTo(bestTarget) / 100
+                    if distToTarget <= maxDistMeters then
+                        player.bIsWeaponFiring = true
+                        if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(true) end
+                        if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
+                        local wepMgr = player.WeaponManagerComponent
+                        if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
+                        
+                        local currentWep = player:GetCurrentWeapon()
+                        if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
+                            currentWep:StartFire() 
                         end
-                    end)
-                end
+                        _G.LexusState.IsAutoFiring = true
+                    end
+                end)
+            end
+        end) -- ✅ FIX: pcall ka end
+    end -- ✅ FIX: function ka end
+
     -- 60 FPS Loop Start
     local function FastAimbotTickV2()
         pcall(function()
