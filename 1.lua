@@ -1793,9 +1793,10 @@ do
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchScopePred or 0 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchScopePred = v; return true end},
                         -- ================= ADS FIX =================
-        {Key="LunarAimV2_ADSFix",UI=AliasMap.Switcher,Text="ADS FIX (Scope Aim)",ExpandHandle="LunarAimV2_Main",
-            GetFunc=function() return _G.LexusConfig.AimTouchADSFix end,
-            SetFunc=function(c,v) _G.LexusConfig.AimTouchADSFix = v; return true end},
+                -- ================= AIM ADJUST (Low/High) =================
+        {Key="LunarAimV2_Adjust",UI=AliasMap.Slider,Text="Aim Adjust (0-100)",ExpandHandle="LunarAimV2_Main",Min=0,Max=100,
+            GetFunc=function() return _G.LexusState.CustomTextData.AimAdjust or 50 end,
+            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimAdjust = v; return true end},
 
         -- ================= SHOTGUN =================
         {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
@@ -5700,24 +5701,9 @@ do
             if not viewportSize or not viewportSize.X then return end
             
             -- ADS Scope Center Fix
-            local centerX = viewportSize.X * 0.5
+                        local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
-            
-            if isADS and _G.LexusConfig.AimTouchADSFix then
-                local camRot = nil
-                pcall(function() camRot = camManager:GetCameraRotation() end)
-                local ctrlRot = nil
-                pcall(function() ctrlRot = pc:GetControlRotation() end)
-                if camRot and ctrlRot then
-                    local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
-                    if yawDiff > 180 then yawDiff = yawDiff - 360 end
-                    centerX = centerX + (yawDiff * 12.0)
-                end
-            end
-
-            local fovMultiplier = 1.0
-            if isADS and _G.LexusConfig.AimTouchADSFix then fovMultiplier = 1.3 end
-            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
+            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
             
             local bestTarget = nil
             local bestScore = 99999999 
@@ -5835,8 +5821,14 @@ do
             
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
-            if _G.LexusConfig.AimTouchADSFix and isADS then
-                finalBonePos.Z = finalBonePos.Z - 10
+                        -- ✅ AIM ADJUST (Low/High)
+            local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
+            if isADS then
+                -- Slider se aim ko upar/neeche adjust karein
+                -- Agar slider 50 se kam (aim neeche), toh Z minus
+                -- Agar slider 50 se zyada (aim upar), toh Z plus
+                local adjustOffset = (aimAdjust - 50) * 0.5
+                finalBonePos.Z = finalBonePos.Z + adjustOffset
             end
             
             local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
