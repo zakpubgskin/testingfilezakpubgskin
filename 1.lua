@@ -6116,28 +6116,21 @@ end)
 -- 60 FPS Loop Start
 -- 🔧 FIX #10: Error print add (silent pcall se debug nahi ho raha tha)
 local function FastAimbotTickV2()
-    local ok, err = pcall(function()
-        if _G.LexusConfig.AimTouchEnable then
-            if type(_G.AimTouchV2) == "function" then
+        pcall(function()
+            if _G.LexusConfig.AimTouchEnable then
                 _G.AimTouchV2()
-            else
-                print("[AimV2] CRITICAL: _G.AimTouchV2 is not a function!")
             end
+        end)
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
         end
-    end)
-    if not ok then
-        print("[AimV2] Error:", tostring(err))
     end
+
     local okTicker, ticker = pcall(require, "common.time_ticker")
     if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.016, FastAimbotTickV2)
+        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
     end
-end
-
-local okTicker, ticker = pcall(require, "common.time_ticker")
-if okTicker and ticker and ticker.AddTimerOnce then
-    ticker.AddTimerOnce(0.5, FastAimbotTickV2)
-end
 -- ============================================================================
 -- END WORKING AIMBOT SYSTEM
 -- ============================================================================
