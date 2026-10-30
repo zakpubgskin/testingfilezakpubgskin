@@ -5591,7 +5591,7 @@ do
         return result
     end
 
-        _G.AimTouchV2 = function()
+    _G.AimTouchV2 = function()
         pcall(function()
             if not _G.LexusConfig.AimTouchEnable then return end
             
@@ -5700,8 +5700,7 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
-            -- ADS Scope Center Fix
-                        local centerX = viewportSize.X * 0.5
+            local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
             local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
             
@@ -5821,13 +5820,11 @@ do
             
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
-                        -- ✅ AIM ADJUST (Low/High)
-                        -- ✅ AIM ADJUST (Smooth & Linear - 1% change par bhi farq)
+            -- ✅ AIM ADJUST (Low/High) - FIXED FOR ADS
             local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
             if isADS then
-                -- Har 1% par 0.2 units ka farq
-                -- 5% = 1 unit, 10% = 2 units, 20% = 4 units
-                local adjustOffset = (aimAdjust - 50) * 0.2
+                -- Sirf 0.5 units per % change taake 5% par bhi aim theek rahe
+                local adjustOffset = (aimAdjust - 50) * 0.5
                 finalBonePos.Z = finalBonePos.Z + adjustOffset
             end
             
@@ -5840,7 +5837,8 @@ do
             local deltaYaw = rot.Yaw - currentRot.Yaw
             local deltaPitch = rot.Pitch - currentRot.Pitch
             
-            if isADS and _G.LexusConfig.AimTouchADSFix then
+            -- ✅ FIX: ADS Camera Alignment (Bhaagna band)
+            if isADS then
                 local camRot = nil
                 if type(camManager.GetCameraRotation) == "function" then
                     camRot = camManager:GetCameraRotation()
