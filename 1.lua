@@ -5563,6 +5563,7 @@ end
 -- ============================================================================
 -- 🚀 WORKING AIMBOT SYSTEM (OLD LOGIC - FIXED SCOPE & SPEED)
 -- ============================================================================
+
 do
     local GameplayData = require("GameLua.GameCore.Data.GameplayData")
     local FVector2D = import("Vector2D")
@@ -5592,7 +5593,7 @@ do
         return result
     end
 
-        _G.AimTouchV2 = function()
+    _G.AimTouchV2 = function()
         pcall(function()
             if not _G.LexusConfig.AimTouchEnable then return end
             
@@ -5701,7 +5702,7 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
-            -- ✅ FIX: ADS Hamesha ON (Camera Alignment)
+            -- ✅ FIX: Scope Center & FOV Adjust (HAMESHA ON)
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
             
@@ -5837,7 +5838,7 @@ do
             
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
             
-            -- ✅ FIX: Aim Adjust (Slider se neeche/upar karein)
+            -- ✅ FIX: Low/High Adjust (Scope mein aim neeche karein)
             if isADS then
                 local aimAdjust = _G.LexusState.CustomTextData.AimAdjust or 50
                 finalBonePos.Z = finalBonePos.Z - ((aimAdjust - 50) * 0.5)
@@ -5919,6 +5920,7 @@ do
     if okTicker and ticker and ticker.AddTimerOnce then
         ticker.AddTimerOnce(0.5, FastAimbotTickV2)
     end
+end
 -- ============================================================================
 -- END WORKING AIMBOT SYSTEM
 -- ============================================================================
