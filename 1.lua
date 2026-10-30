@@ -5697,9 +5697,27 @@ do
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
             
+                        -- ✅ FIX: Scope Center & FOV Adjust
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
-            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
+            
+            -- Scope (ADS) ke waqt camera shift adjust karein taake aim left/right na bhage
+            if isADS then
+                local camRot = nil
+                pcall(function() camRot = camManager:GetCameraRotation() end)
+                local ctrlRot = nil
+                pcall(function() ctrlRot = pc:GetControlRotation() end)
+                if camRot and ctrlRot then
+                    local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
+                    if yawDiff > 180 then yawDiff = yawDiff - 360 end
+                    centerX = centerX + (yawDiff * 12.0)
+                end
+            end
+
+            -- Scope mein FOV radius thoda bada karein taake target na choote
+            local fovMultiplier = 1.0
+            if isADS then fovMultiplier = 1.3 end
+            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
             
             local bestTarget = nil
             local bestScore = 99999999 
