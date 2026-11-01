@@ -441,7 +441,13 @@ _G.LexusConfig.IpadView = _G.LexusConfig.IpadView or false
 _G.LexusState = _G.LexusState or {}
 _G.LexusState.CustomTextData = _G.LexusState.CustomTextData or {}
 _G.LexusState.CustomTextData.IpadViewFOV = _G.LexusState.CustomTextData.IpadViewFOV or 120
-
+-- ADS Fix slider default (1-100 scale)
+_G.LexusState.CustomTextData.AimTouchADSFixValue = _G.LexusState.CustomTextData.AimTouchADSFixValue or 50
+if _G.LexusState.CustomTextData.AimTouchADSFixValue < 1 then
+    _G.LexusState.CustomTextData.AimTouchADSFixValue = 1
+elseif _G.LexusState.CustomTextData.AimTouchADSFixValue > 100 then
+    _G.LexusState.CustomTextData.AimTouchADSFixValue = 100
+end
 -- g_vipserver_GetLocalPlayer made by VIP Server
 local function g_vipserver_GetLocalPlayer()
     local ok, GDP = pcall(require, "GameLua.GameCore.Data.GameplayData")
@@ -5818,7 +5824,10 @@ do
             local centerY = viewportSize.Y * 0.5
             
             -- FIXED: ADS scope center correction
+                        -- ✅ ADS scope center correction (slider-based 1-100)
             if isADS and _G.LexusConfig.AimTouchADSFix then
+                local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+                adsFixVal = math.max(1, math.min(100, adsFixVal))
                 local camRot = nil
                 pcall(function() camRot = camManager:GetCameraRotation() end)
                 local ctrlRot = nil
@@ -5826,7 +5835,9 @@ do
                 if camRot and ctrlRot then
                     local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
                     if yawDiff > 180 then yawDiff = yawDiff - 360 end
-                    centerX = centerX + (yawDiff * 12.0)
+                    -- 1 = weak correction (0.5x), 100 = strong correction (20x)
+                    local yawMultiplier = 0.5 + (adsFixVal / 100.0) * 19.5
+                    centerX = centerX + (yawDiff * yawMultiplier)
                 end
             end
             
