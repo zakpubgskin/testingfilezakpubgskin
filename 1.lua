@@ -5835,8 +5835,9 @@ if isADS and _G.LexusConfig.AimTouchADSFix then
         local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
         if yawDiff > 180 then yawDiff = yawDiff - 360 end
         -- ✅ 0.0x to 1.0x only (slider 50 = 0.5x, slider 100 = 1.0x)
-        local yawMultiplier = (adsFixVal / 100.0)
-        centerX = centerX + (yawDiff * yawMultiplier)
+        -- ✅ NEW (0x to 1x — no overcorrection)
+local yawMultiplier = (adsFixVal / 100.0)
+centerX = centerX + (yawDiff * yawMultiplier)
     end
 end
 
