@@ -439,7 +439,17 @@ _G.LexusConfig = _G.LexusConfig or {}
     _G.LexusConfig.AimTouchADSFix = _G.LexusConfig.AimTouchADSFix ~= false
 _G.LexusConfig.IpadView = _G.LexusConfig.IpadView or false
 _G.LexusState = _G.LexusState or {}
-_G.LexusState.CustomTextData = _G.LexusState.CustomTextData or {}
+_G.LexusState.CustomTextData = _G.LexusState.CustomTextData or {
+        OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120,
+        AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250,
+        AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30,
+        AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchScopePred = 0, AimTouchScopeRecoil = 0,
+        AimTouchSniperPrio = 1, AimTouchSniperBone = 1, AimTouchSniperCond = 2, AimTouchSniperSpeed = 30, AimTouchSniperFOV = 20, AimTouchSniperDist = 400, AimTouchSniperPred = 0,
+        AimTouchMortarPred = 0, AimTouchMortarFOV = 360,
+        BugManRatio = 133, FastCarSpeed = 2000,
+        WeaponGlowThickness = 3, WeaponGlowColor = 5,
+        ColorV3Hidden = 1, ColorV3Visible = 2, ColorV3Thickness = 4, OutlineColor = 4
+    }
 _G.LexusState.CustomTextData.IpadViewFOV = _G.LexusState.CustomTextData.IpadViewFOV or 120
 -- ADS Fix slider default (1-100 scale)
 _G.LexusState.CustomTextData.AimTouchADSFixValue = _G.LexusState.CustomTextData.AimTouchADSFixValue or 50
@@ -6071,9 +6081,9 @@ end
             local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
             
             if recoilCompVal > 0 and isFiring then
-                local pullDownForce = (recoilCompVal / 50.0) * 1.5
-                finalPitch = finalPitch - pullDownForce
-            end
+            local pullDownForce = (recoilCompVal / 50.0) * 1.5
+            finalPitch = finalPitch - pullDownForce
+        end
 
             local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
             pc:SetControlRotation(finalRot, "AimTouch")
