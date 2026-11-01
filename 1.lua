@@ -6185,23 +6185,21 @@ _G.LexusState.AimbotLoopToken = (_G.LexusState.AimbotLoopToken or 0) + 1
 local __currentAimbotToken = _G.LexusState.AimbotLoopToken
 
 local function FastAimbotTickV2()
-    if __currentAimbotToken ~= _G.LexusState.AimbotLoopToken then return end
-    
-    pcall(function()
-        if _G.LexusConfig and _G.LexusConfig.AimTouchEnable and _G.AimTouch then
-            _G.AimTouch()
+        pcall(function()
+            if _G.LexusConfig.AimTouchEnable then
+                _G.AimTouch()
+            end
+        end)
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
         end
-    end)
-    
+    end
+
     local okTicker, ticker = pcall(require, "common.time_ticker")
     if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.016, FastAimbotTickV2)
+        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
     end
-end
-
-local okTicker, ticker = pcall(require, "common.time_ticker")
-if okTicker and ticker and ticker.AddTimerOnce then
-    ticker.AddTimerOnce(0.5, FastAimbotTickV2)
 end
 -- ============================================================================
 -- END AIMBOT V2
