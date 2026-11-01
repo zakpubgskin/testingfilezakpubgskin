@@ -5997,19 +5997,33 @@ do
             -- ═══════════════════════════════════════════════════════════
             -- PREDICTION (moving targets)
             -- ═══════════════════════════════════════════════════════════
-            if predVal > 0 then
-                pcall(function()
-                    local tVelocity = nil
-                    if type(bestTarget.GetVelocity) == "function" then
-                        tVelocity = bestTarget:GetVelocity()
-                    end
-        if isADS and _G.LexusConfig.AimTouchADSFix then
-    local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
-    adsFixVal = math.max(1, math.min(100, adsFixVal))
-    local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
-    local baseOffset = math.min(25, math.max(3, distToEnemy * 0.8))
-    local sliderFactor = 0.2 + (adsFixVal / 100.0) * 1.8
-    finalBonePos.Z = finalBonePos.Z - (baseOffset * sliderFactor)
+           -- ADS height correction (independent of prediction)
+if isADS and _G.LexusConfig.AimTouchADSFix then
+    pcall(function()
+        local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+        adsFixVal = math.max(1, math.min(100, adsFixVal))
+        local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+        local baseOffset = math.min(25, math.max(3, distToEnemy * 0.8))
+        local sliderFactor = 0.2 + (adsFixVal / 100.0) * 1.8
+        finalBonePos.Z = finalBonePos.Z - (baseOffset * sliderFactor)
+    end)
+end
+
+-- Prediction (only when enabled)
+if predVal > 0 then
+    pcall(function()
+        local tVelocity = nil
+        if type(bestTarget.GetVelocity) == "function" then
+            tVelocity = bestTarget:GetVelocity()
+        end
+        if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
+            local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+            local bulletSpeed = isSniper and 900.0 or 700.0
+            local ToF = (distToEnemy / bulletSpeed) * (predVal / 50.0) 
+            finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
+            finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
+        end
+    end)
 end
                     
                     if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
