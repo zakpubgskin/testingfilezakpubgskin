@@ -436,7 +436,7 @@ end -- V9.5 integration: exported callback retains the scoped helpers.
 if Client and _G._BYPASS_Execute then pcall(_G._BYPASS_Execute) end
 
 _G.LexusConfig = _G.LexusConfig or {}
-    _G.LexusConfig.AimTouchADSFix = _G.LexusConfig.AimTouchADSFix ~= false
+    --_G.LexusConfig.AimTouchADSFix = _G.LexusConfig.AimTouchADSFix ~= false
 _G.LexusConfig.IpadView = _G.LexusConfig.IpadView or false
 _G.LexusState = _G.LexusState or {}
 _G.LexusState.CustomTextData = _G.LexusState.CustomTextData or {
@@ -1813,14 +1813,15 @@ do
                 -- ================= AIM ADJUST (Low/High) =================
         -- ================= ADS FIX (replaces old Aim Adjust slider) =================
         -- ================= ADS FIX SLIDER (1-100) =================
-        {Key="LunarAimV2_ADSFix",UI=AliasMap.Slider,Text="ADS Fix (1-100)",ExpandHandle="LunarAimV2_Main",Min=1,Max=100,
+                {Key="LunarAimV2_ADSFix",UI=AliasMap.Slider,Text="ADS Fix (1-100)",ExpandHandle="LunarAimV2_Main",Min=1,Max=100,
     GetFunc=function() return tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50 end,
     SetFunc=function(c,v) 
-        _G.LexusState.CustomTextData.AimTouchADSFixValue = tonumber(v) or 50
-        _G.LexusConfig.AimTouchADSFix = true
+        local val = tonumber(v) or 50
+        if val < 1 then val = 1 elseif val > 100 then val = 100 end
+        _G.LexusState.CustomTextData.AimTouchADSFixValue = val
+        -- Dead AimTouchADSFix boolean hataa diya (koi nahi padhta)
         return true 
     end},
-
         -- ================= SHOTGUN =================
         {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchSG end,
@@ -5566,8 +5567,9 @@ _G.AimTouch = function()
         local previous=_G.LunarFeatures.AimLastClock
         local dt=previous and math.max(0.001,math.min(0.05,now-previous)) or 0.011
         _G.LunarFeatures.AimLastClock=now
-        local normalized=(_G.LunarFeatures.Clamp(speedVal,100,120,100)-100)/20.0
-        local strength=0.02+0.48*normalized*normalized
+                -- Slider 1-100 hai, isliye seedha 0..1 me normalize karo
+        local normalized = math.max(0, math.min(1, (tonumber(speedVal) or 50) / 100.0))
+        local strength = 0.02 + 0.48 * normalized * normalized
         local alpha=math.min(0.5,1.0-(1.0-strength)^(dt/0.011))
         local maxTurnRate=10.0+35.0*normalized
 
@@ -5931,6 +5933,16 @@ do
                     finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
                 end
             end)
+        end
+            -- ===== ADS Fix (V2) =====
+        if isADS and isFiring then
+            local dist = player:GetDistanceTo(bestTarget) / 100.0
+            local adsFixValue = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+            if adsFixValue < 1 then adsFixValue = 1 end
+            if adsFixValue > 100 then adsFixValue = 100 end
+            local zOffset = (adsFixValue / 50.0) * 1.1
+            local maxDrop = math.min(dist * zOffset, 80.0)
+            finalBonePos.Z = finalBonePos.Z - maxDrop
         end
 
         local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
