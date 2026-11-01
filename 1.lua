@@ -6003,6 +6003,14 @@ do
                     if type(bestTarget.GetVelocity) == "function" then
                         tVelocity = bestTarget:GetVelocity()
                     end
+        if isADS and _G.LexusConfig.AimTouchADSFix then
+    local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+    adsFixVal = math.max(1, math.min(100, adsFixVal))
+    local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+    local baseOffset = math.min(25, math.max(3, distToEnemy * 0.8))
+    local sliderFactor = 0.2 + (adsFixVal / 100.0) * 1.8
+    finalBonePos.Z = finalBonePos.Z - (baseOffset * sliderFactor)
+end
                     
                     if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
                         local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
@@ -6013,25 +6021,6 @@ do
                     end
                 end)
             end
-
-                        -- ═══════════════════════════════════════════════════════════
-            -- ✅ ADS Z-CORRECTION (slider + distance-based)
-            -- ═══════════════════════════════════════════════════════════
-                        if isADS and _G.LexusConfig.AimTouchADSFix then
-                local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
-                adsFixVal = math.max(1, math.min(100, adsFixVal))
-                -- 1 = 20% correction, 100 = 100% correction
-                local rotFactor = 0.2 + (adsFixVal / 100.0) * 0.8
-                local camRot = nil
-                if type(camManager.GetCameraRotation) == "function" then
-                    camRot = camManager:GetCameraRotation()
-                end
-                if camRot then
-                    deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw) * rotFactor
-                    deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch) * rotFactor
-                end
-            end
-
             -- ═══════════════════════════════════════════════════════════
             -- ROTATION CALCULATION
             -- ═══════════════════════════════════════════════════════════
@@ -6045,15 +6034,18 @@ do
             local deltaPitch = rot.Pitch - currentRot.Pitch
             
             if isADS and _G.LexusConfig.AimTouchADSFix then
-                local camRot = nil
-                if type(camManager.GetCameraRotation) == "function" then
-                    camRot = camManager:GetCameraRotation()
-                end
-                if camRot then
-                    deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
-                    deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
-                end
-            end
+    local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+    adsFixVal = math.max(1, math.min(100, adsFixVal))
+    local rotFactor = 0.2 + (adsFixVal / 100.0) * 0.8
+    local camRot = nil
+    if type(camManager.GetCameraRotation) == "function" then
+        camRot = camManager:GetCameraRotation()
+    end
+    if camRot then
+        deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw) * rotFactor
+        deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch) * rotFactor
+    end
+end
 
             if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
             if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
