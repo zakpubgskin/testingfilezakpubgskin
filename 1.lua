@@ -1795,9 +1795,10 @@ do
                         -- ================= ADS FIX =================
                
                 -- ================= AIM ADJUST (Low/High) =================
-        {Key="LunarAimV2_Adjust",UI=AliasMap.Slider,Text="Aim Adjust (0-100)",ExpandHandle="LunarAimV2_Main",Min=0,Max=100,
-            GetFunc=function() return _G.LexusState.CustomTextData.AimAdjust or 50 end,
-            SetFunc=function(c,v) _G.LexusState.CustomTextData.AimAdjust = v; return true end},
+        -- ================= ADS FIX (replaces old Aim Adjust slider) =================
+{Key="LunarAimV2_ADSFix",UI=AliasMap.Switcher,Text="ADS FIX (Scope Aim Correct)",ExpandHandle="LunarAimV2_Main",
+    GetFunc=function() return _G.LexusConfig.AimTouchADSFix ~= false end,
+    SetFunc=function(c,v) _G.LexusConfig.AimTouchADSFix = (v == true or v == 1); return true end},
 
         -- ================= SHOTGUN =================
         {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
@@ -1806,6 +1807,9 @@ do
         {Key="LunarAimV2_SG_Auto",UI=AliasMap.Switcher,Text="  Auto Fire",ExpandHandle="LunarAimV2_SG",
             GetFunc=function() return _G.LexusConfig.AimTouchSGAutoFire end,
             SetFunc=function(c,v) _G.LexusConfig.AimTouchSGAutoFire = v; return true end},
+                {Key="LunarAimV2_SG_Condition",UI=AliasMap.Switcher,Text="  Condition (Aim Without Fire)",ExpandHandle="LunarAimV2_SG",
+    GetFunc=function() return _G.LexusConfig.AimTouchSGCondition == true end,
+    SetFunc=function(c,v) _G.LexusConfig.AimTouchSGCondition = (v == true or v == 1); return true end},
         {Key="LunarAimV2_SG_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_SG",Min=1,Max=4,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSGBone or 2 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSGBone = v; return true end},
@@ -1823,6 +1827,9 @@ do
         {Key="LunarAimV2_Sniper",UI=AliasMap.TitleSwitcher,Text="AIMBOT SNIPER",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
             GetFunc=function() return _G.LexusConfig.AimTouchScopeSniper end,
             SetFunc=function(c,v) _G.LexusConfig.AimTouchScopeSniper = v; return true end},
+                {Key="LunarAimV2_Sniper_Condition",UI=AliasMap.Switcher,Text="  Condition (Aim Without Fire)",ExpandHandle="LunarAimV2_Sniper",
+    GetFunc=function() return _G.LexusConfig.AimTouchSniperCondition == true end,
+    SetFunc=function(c,v) _G.LexusConfig.AimTouchSniperCondition = (v == true or v == 1); return true end},
         {Key="LunarAimV2_Sniper_Bone",UI=AliasMap.Slider,Text="  Bone (1-4)",ExpandHandle="LunarAimV2_Sniper",Min=1,Max=4,
             GetFunc=function() return _G.LexusState.CustomTextData.AimTouchSniperBone or 1 end,
             SetFunc=function(c,v) _G.LexusState.CustomTextData.AimTouchSniperBone = v; return true end},
@@ -5120,6 +5127,8 @@ _G.XthrlenConfig.AimTouchScopeIgBot    = false
 _G.XthrlenConfig.AimTouchSG            = false
 _G.XthrlenConfig.AimTouchSGAutoFire    = false
 _G.XthrlenConfig.AimTouchScopeSniper   = false
+_G.XthrlenConfig.AimTouchSGCondition      = false  -- Shotgun: aim chipke without fire
+_G.XthrlenConfig.AimTouchSniperCondition  = false  -- Sniper: aim chipke without fire (scope only)
 _G.XthrlenConfig.AimTouchMortar        = false
 _G.XthrlenConfig.EspFovCircle          = false
 
@@ -5276,9 +5285,13 @@ _G.AimTouch = function()
             predVal = _G.XthrlenState.CustomTextData.AimTouchMortarPred or 0 
             
         elseif isShotgun and _G.XthrlenConfig.AimTouchSG then
-            cond = _G.XthrlenState.CustomTextData.AimTouchSGCond or 1
-            if _G.XthrlenConfig.AimTouchSGAutoFire then cond = 2 end
-            if cond == 1 and not isFiring then return end
+    cond = _G.XthrlenState.CustomTextData.AimTouchSGCond or 1
+    if _G.XthrlenConfig.AimTouchSGAutoFire then cond = 2 end
+    -- NEW: Condition toggle = aim chipke WITHOUT fire (like auto-fire but no shooting)
+    if _G.XthrlenConfig.AimTouchSGCondition then
+        cond = 2  -- forced "always aim" mode, but auto-fire NOT triggered
+    end
+    if cond == 1 and not isFiring then return end
             prioMode = _G.XthrlenState.CustomTextData.AimTouchSGPrio or 1
             boneIdx = _G.XthrlenState.CustomTextData.AimTouchSGBone or 2
             speedVal = _G.XthrlenState.CustomTextData.AimTouchSGSpeed or 80
@@ -5288,10 +5301,13 @@ _G.AimTouch = function()
             igKnock = _G.XthrlenConfig.AimTouchSGIgKnock
             igBot = _G.XthrlenConfig.AimTouchSGIgBot
             
-        elseif isADS then
-            if isSniper and _G.XthrlenConfig.AimTouchScopeSniper then
-                cond = _G.XthrlenState.CustomTextData.AimTouchSniperCond or 2
-                if cond == 1 and not isFiring then return end
+        if isSniper and _G.XthrlenConfig.AimTouchScopeSniper then
+    cond = _G.XthrlenState.CustomTextData.AimTouchSniperCond or 2
+    -- NEW: Sniper condition = aim chipke WITHOUT fire, but ONLY in scope (ADS)
+    if _G.XthrlenConfig.AimTouchSniperCondition and isADS then
+        cond = 2  -- always aim mode, but no auto-fire
+    end
+    if cond == 1 and not isFiring then return end
                 prioMode = _G.XthrlenState.CustomTextData.AimTouchSniperPrio or 1
                 boneIdx = _G.XthrlenState.CustomTextData.AimTouchSniperBone or 1
                 speedVal = _G.XthrlenState.CustomTextData.AimTouchSniperSpeed or 30
@@ -5564,6 +5580,9 @@ end
 -- 🚀 WORKING AIMBOT SYSTEM (OLD LOGIC - FIXED SCOPE & SPEED)
 -- ============================================================================
 
+-- ============================================================================
+-- AIMBOT V2 — FULLY FIXED
+-- ============================================================================
 do
     local GameplayData = require("GameLua.GameCore.Data.GameplayData")
     local FVector2D = import("Vector2D")
@@ -5595,37 +5614,59 @@ do
 
     _G.AimTouchV2 = function()
         pcall(function()
+            -- ============ CONFIG CHECK ============
             if not _G.LexusConfig.AimTouchEnable then return end
-            
+
             local player = GameplayData.GetPlayerCharacter()
             if not (slua and slua.isValid and slua.isValid(player)) then return end
-            
+
             local pc = player:GetPlayerControllerSafety()
             if not (slua and slua.isValid and slua.isValid(pc)) then return end
-            
+
+            -- ============ STATE READ ============
             local isFiring = player.bIsWeaponFiring
-            local isADS = player.bIsGunADS == true or player.bIsAiming == true or player.bIsWeaponAiming == true
-            pcall(function()
-                if not isADS then
-                    local cam = player.ThirdPersonCameraComponent
-                    if slua.isValid(cam) and cam.FieldOfView and cam.FieldOfView < 75 then isADS = true end
-                end
-            end)
-            
+            -- FIXED: removed unreliable FOV heuristic (was causing false ADS on iPad FOV < 75)
+            local isADS = player.bIsGunADS == true or player.bIsWeaponAiming == true
+
             local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
-            if not weapon and type(player.GetCurrentShootWeapon) == "function" then weapon = player:GetCurrentShootWeapon() end
-            
+            if not weapon and type(player.GetCurrentShootWeapon) == "function" then
+                weapon = player:GetCurrentShootWeapon()
+            end
+
+            -- ============ WEAPON DETECTION (case-insensitive) ============
             local isShotgun, isSniper, currentAmmo = false, false, 1
             if slua.isValid(weapon) then
                 local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
                 local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
-                if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then isShotgun = true end
-                if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then isSniper = true end
-                if type(weapon.GetCurrentAmmo) == "function" then currentAmmo = weapon:GetCurrentAmmo()
-                elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then currentAmmo = weapon.ShootWeaponComponent:GetCurrentAmmo()
-                elseif weapon.CurrentAmmo ~= nil then currentAmmo = weapon.CurrentAmmo end
+                local wNameLower = string.lower(wName)
+
+                if (wID >= 1030000 and wID < 1040000)
+                   or wNameLower:find("s686") or wNameLower:find("s1897")
+                   or wNameLower:find("s12") or wNameLower:find("dbs")
+                   or wNameLower:find("m1014") then
+                    isShotgun = true
+                end
+
+                if wNameLower:find("kar98") or wNameLower:find("m24")
+                   or wNameLower:find("awm") or wNameLower:find("mosin")
+                   or wNameLower:find("win94") or wNameLower:find("amr")
+                   or wNameLower:find("sks") or wNameLower:find("slr")
+                   or wNameLower:find("mini") or wNameLower:find("mk14")
+                   or wNameLower:find("qbu") or wNameLower:find("mk12")
+                   or wNameLower:find("vss") then
+                    isSniper = true
+                end
+
+                if type(weapon.GetCurrentAmmo) == "function" then
+                    currentAmmo = weapon:GetCurrentAmmo()
+                elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then
+                    currentAmmo = weapon.ShootWeaponComponent:GetCurrentAmmo()
+                elseif weapon.CurrentAmmo ~= nil then
+                    currentAmmo = weapon.CurrentAmmo
+                end
             end
 
+            -- ============ AUTO-FIRE RESET ============
             if _G.LexusState.IsAutoFiring then
                 pcall(function()
                     player.bIsWeaponFiring = false
@@ -5639,12 +5680,20 @@ do
 
             if isShotgun and currentAmmo <= 0 then return end
 
+            -- ============ PARAMETER SETUP ============
             local cond, prioMode, boneIdx, speedVal, fovVal, maxDistMeters = 2, 1, 1, 50, 30, 50
             local useVisCheck, igKnock, igBot, predVal = false, false, false, 0
+            local isConditionMode = false  -- for shotgun auto-fire suppression
 
+            -- ============ SHOTGUN BLOCK ============
             if isShotgun and _G.LexusConfig.AimTouchSG then
                 cond = _G.LexusState.CustomTextData.AimTouchSGCond or 1
                 if _G.LexusConfig.AimTouchSGAutoFire then cond = 2 end
+                -- Condition = aim chipke WITHOUT fire
+                if _G.LexusConfig.AimTouchSGCondition then
+                    cond = 2
+                    isConditionMode = true
+                end
                 if cond == 1 and not isFiring then return end
                 boneIdx = _G.LexusState.CustomTextData.AimTouchSGBone or 2
                 speedVal = _G.LexusState.CustomTextData.AimTouchSGSpeed or 80
@@ -5653,10 +5702,15 @@ do
                 useVisCheck = _G.LexusConfig.AimTouchSGVisCheck
                 igKnock = _G.LexusConfig.AimTouchSGIgKnock
                 igBot = _G.LexusConfig.AimTouchSGIgBot
-                
+
+            -- ============ ADS / SCOPE BLOCK ============
             elseif isADS then
                 if isSniper and _G.LexusConfig.AimTouchScopeSniper then
                     cond = _G.LexusState.CustomTextData.AimTouchSniperCond or 2
+                    -- Sniper Condition (scope only, aim without fire)
+                    if _G.LexusConfig.AimTouchSniperCondition then
+                        cond = 2
+                    end
                     if cond == 1 and not isFiring then return end
                     boneIdx = _G.LexusState.CustomTextData.AimTouchSniperBone or 1
                     speedVal = _G.LexusState.CustomTextData.AimTouchSniperSpeed or 30
@@ -5665,6 +5719,7 @@ do
                     useVisCheck = _G.LexusConfig.AimTouchSniperVisCheck
                     igKnock = _G.LexusConfig.AimTouchSniperIgKnock
                     igBot = _G.LexusConfig.AimTouchSniperIgBot
+                    predVal = _G.LexusState.CustomTextData.AimTouchSniperPred or 0
                 elseif _G.LexusConfig.AimTouchScopeAll then
                     cond = _G.LexusState.CustomTextData.AimTouchScopeCond or 1
                     if cond == 1 and not isFiring then return end
@@ -5676,11 +5731,15 @@ do
                     igKnock = _G.LexusConfig.AimTouchScopeIgKnock
                     igBot = _G.LexusConfig.AimTouchScopeIgBot
                     predVal = _G.LexusState.CustomTextData.AimTouchScopePred or 0
-                else return end
+                else
+                    return
+                end
+
+            -- ============ HIPFIRE BLOCK ============
             else
                 if not _G.LexusConfig.AimTouchHipfire then return end
                 cond = _G.LexusState.CustomTextData.AimTouchHipCond or 1
-                if cond == 1 and not isFiring then return end 
+                if cond == 1 and not isFiring then return end
                 boneIdx = _G.LexusState.CustomTextData.AimTouchHipBone or 1
                 speedVal = _G.LexusState.CustomTextData.AimTouchHipSpeed or 50
                 fovVal = _G.LexusState.CustomTextData.AimTouchHipFOV or 30
@@ -5690,22 +5749,23 @@ do
                 igBot = _G.LexusConfig.AimTouchHipIgBot
             end
 
+            -- ============ ENEMY SCAN ============
             local enemies = _G.GetEnemyTargetsFromActorsV2(maxDistMeters * 100)
             if not enemies or #enemies == 0 then return end
-            
+
             local camManager = UGameplayStatics.GetPlayerCameraManager(pc, 0)
             if not slua.isValid(camManager) then return end
             local camLoc = camManager:GetCameraLocation()
             if not camLoc then return end
-            
+
             local viewportSize = nil
             pcall(function() viewportSize = UIUtil.GetViewportSize() end)
             if not viewportSize or not viewportSize.X then return end
-            
-            -- ✅ FIX: Scope Center & FOV Adjust (Sirf jab ADSFix ON ho)
+
+            -- ============ SCOPE CENTER CORRECTION ============
             local centerX = viewportSize.X * 0.5
             local centerY = viewportSize.Y * 0.5
-            
+
             if isADS and _G.LexusConfig.AimTouchADSFix then
                 local camRot = nil
                 pcall(function() camRot = camManager:GetCameraRotation() end)
@@ -5721,22 +5781,23 @@ do
             local fovMultiplier = 1.0
             if isADS and _G.LexusConfig.AimTouchADSFix then fovMultiplier = 1.3 end
             local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
-            
-            local bestTarget = nil
-            local bestScore = 99999999 
-            
-            -- ✅ FIX: Correct Bone Names
+
+            -- ============ BONE NAME RESOLUTION ============
             local selBoneName = "Head"
             if boneIdx == 1 then selBoneName = "Head"
-            elseif boneIdx == 2 then selBoneName = "Spine_03" 
-            elseif boneIdx == 3 then selBoneName = "Spine_01" 
+            elseif boneIdx == 2 then selBoneName = "Spine_03"
+            elseif boneIdx == 3 then selBoneName = "Spine_01"
             elseif boneIdx == 4 then selBoneName = "Pelvis"
             end
+
+            -- ============ TARGET SELECTION ============
+            local bestTarget = nil
+            local bestScore = 99999999
 
             for i, target in ipairs(enemies) do
                 if not slua.isValid(target) then goto continue end
                 if igKnock and target.HealthStatus == 1 then goto continue end
-                
+
                 if igBot then
                     local tIsBot = false
                     if target.bIsAI == true or target.IsAI == true then tIsBot = true end
@@ -5744,7 +5805,7 @@ do
                     if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
                     if tIsBot then goto continue end
                 end
-                
+
                 if useVisCheck then
                     local curTime = os.clock()
                     local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
@@ -5756,27 +5817,27 @@ do
                     end
                     if _G.AimTouchVisCache[tId].hidden then goto continue end
                 end
-                
+
                 local tPos = nil
                 pcall(function()
-                    if type(target.GetBonePos) == "function" then 
-                        tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0}) 
+                    if type(target.GetBonePos) == "function" then
+                        tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
                     end
                 end)
-                
+
                 if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
                     pcall(function()
-                        if type(target.GetSocketLocation) == "function" then 
-                            tPos = target:GetSocketLocation(selBoneName) 
+                        if type(target.GetSocketLocation) == "function" then
+                            tPos = target:GetSocketLocation(selBoneName)
                         end
                     end)
                 end
-                
+
                 if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
                     pcall(function()
                         if type(target.K2_GetActorLocation) == "function" then
                             tPos = target:K2_GetActorLocation()
-                            if tPos then 
+                            if tPos then
                                 if boneIdx == 1 then tPos.Z = tPos.Z + 60
                                 elseif boneIdx == 2 then tPos.Z = tPos.Z + 30
                                 elseif boneIdx == 3 then tPos.Z = tPos.Z + 10
@@ -5785,49 +5846,50 @@ do
                         end
                     end)
                 end
-                
+
                 if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
-                
+
                 local screen = FVector2D()
                 local success, outScreen = pc:ProjectWorldLocationToScreen(tPos, screen, false)
                 if outScreen then screen = outScreen end
                 if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
-                
+
                 local dx = screen.X - centerX
                 local dy = screen.Y - centerY
                 local distScreen = math.sqrt(dx*dx + dy*dy)
-                
+
                 if distScreen > FOV_RADIUS then goto continue end
-                
+
                 if distScreen < bestScore then
                     bestScore = distScreen
                     bestTarget = target
                 end
                 ::continue::
             end
-            
+
             if not slua.isValid(bestTarget) then return end
-            
+
+            -- ============ FINAL BONE POSITION ============
             local finalBonePos = nil
             pcall(function()
-                if type(bestTarget.GetBonePos) == "function" then 
-                    finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0}) 
+                if type(bestTarget.GetBonePos) == "function" then
+                    finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
                 end
             end)
-            
+
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
                 pcall(function()
-                    if type(bestTarget.GetSocketLocation) == "function" then 
-                        finalBonePos = bestTarget:GetSocketLocation(selBoneName) 
+                    if type(bestTarget.GetSocketLocation) == "function" then
+                        finalBonePos = bestTarget:GetSocketLocation(selBoneName)
                     end
                 end)
             end
-            
+
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
                 pcall(function()
                     if type(bestTarget.K2_GetActorLocation) == "function" then
                         finalBonePos = bestTarget:K2_GetActorLocation()
-                        if finalBonePos then 
+                        if finalBonePos then
                             if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 60
                             elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 30
                             elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 10
@@ -5836,23 +5898,43 @@ do
                     end
                 end)
             end
-            
+
             if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
-            
-            -- ✅ FIX: Low/High Adjust (Agar aim upar jata hai toh Z kam karein)
-            if _G.LexusConfig.AimTouchADSFix and isADS then
-                finalBonePos.Z = finalBonePos.Z - 10 -- Scope mein thoda neeche aim karein
+
+            -- ============ PREDICTION (moving targets) ============
+            if predVal > 0 then
+                pcall(function()
+                    local tVelocity = nil
+                    if type(bestTarget.GetVelocity) == "function" then
+                        tVelocity = bestTarget:GetVelocity()
+                    end
+                    if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
+                        local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+                        local bulletSpeed = isSniper and 900.0 or 700.0  -- m/s
+                        local ToF = (distToEnemy / bulletSpeed) * (predVal / 50.0)
+                        finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
+                        finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
+                    end
+                end)
             end
-            
+
+            -- ============ ADS Z-CORRECTION (dynamic) ============
+            if isADS and _G.LexusConfig.AimTouchADSFix then
+                local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+                local zOffset = math.min(25, math.max(3, distToEnemy * 0.8))
+                finalBonePos.Z = finalBonePos.Z - zOffset
+            end
+
+            -- ============ ROTATION CALCULATION ============
             local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
             if not rot then return end
-            
+
             local currentRot = pc:GetControlRotation()
             if not currentRot then return end
-            
+
             local deltaYaw = rot.Yaw - currentRot.Yaw
             local deltaPitch = rot.Pitch - currentRot.Pitch
-            
+
             if isADS and _G.LexusConfig.AimTouchADSFix then
                 local camRot = nil
                 if type(camManager.GetCameraRotation) == "function" then
@@ -5868,7 +5950,7 @@ do
             if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
             if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
             if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
-            
+
             local smoothFactor = 0.0
             if speedVal >= 100 then
                 smoothFactor = 1.0
@@ -5876,14 +5958,15 @@ do
                 smoothFactor = (speedVal / 100.0) * 0.8
                 if smoothFactor < 0.05 then smoothFactor = 0.05 end
             end
-            
+
             local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
             local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
 
             local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
             pc:SetControlRotation(finalRot, "AimTouchV2")
-            
-            if isShotgun and _G.LexusConfig.AimTouchSGAutoFire then
+
+            -- ============ AUTO-FIRE (only if AutoFire ON AND Condition OFF) ============
+            if isShotgun and _G.LexusConfig.AimTouchSGAutoFire and not isConditionMode then
                 pcall(function()
                     local distToTarget = player:GetDistanceTo(bestTarget) / 100
                     if distToTarget <= maxDistMeters then
@@ -5892,10 +5975,10 @@ do
                         if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
                         local wepMgr = player.WeaponManagerComponent
                         if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
-                        
+
                         local currentWep = player:GetCurrentWeapon()
-                        if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
-                            currentWep:StartFire() 
+                        if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then
+                            currentWep:StartFire()
                         end
                         _G.LexusState.IsAutoFiring = true
                     end
@@ -5903,7 +5986,8 @@ do
             end
         end)
     end
-    -- 60 FPS Loop Start
+
+    -- 60 FPS Loop
     local function FastAimbotTickV2()
         pcall(function()
             if _G.LexusConfig.AimTouchEnable then
@@ -5922,10 +6006,8 @@ do
     end
 end
 -- ============================================================================
--- END WORKING AIMBOT SYSTEM
+-- END AIMBOT V2
 -- ============================================================================
--- Preserve the reference's DrawDyeing/Highlight/IdeaOutline settings and cadence.
--- Deduplicate mesh identities; do not assume the game leaves material flags alone.
 do
     local F=_G.LunarFeatures
     local valid=g_vipserver_ESPValid
