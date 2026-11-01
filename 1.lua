@@ -7733,7 +7733,7 @@ do
         end
         if F.Settings.MortarEnabled and (now>=F.Mortar.Due-0.000001 or (F.Mortar.LastTime and now<F.Mortar.LastTime)) then checked(F.Mortar.Tick,"Mortar.Tick") end
 
-        if F.Settings.AimEnabled then
+        if false and F.Settings.AimEnabled then
             if now>=F.AimDue-0.000001 or (F.AimLastTick and now<F.AimLastTick) then
                 checked(F.Aim.Tick,"Aim.Render")
                 F.AimLastTick=now
