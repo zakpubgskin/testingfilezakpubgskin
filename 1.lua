@@ -5822,32 +5822,32 @@ do
             
             -- FIXED: ADS scope center correction
                         -- ✅ ADS scope center correction (slider-based 1-100)
-            if isADS and _G.LexusConfig.AimTouchADSFix then
-                local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
-                adsFixVal = math.max(1, math.min(100, adsFixVal))
-                local camRot = nil
-                pcall(function() camRot = camManager:GetCameraRotation() end)
-                local ctrlRot = nil
-                pcall(function() ctrlRot = pc:GetControlRotation() end)
-                if camRot and ctrlRot then
-                    local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
-                    if yawDiff > 180 then yawDiff = yawDiff - 360 end
-                    -- 1 = weak correction (0.5x), 100 = strong correction (20x)
-                    local yawMultiplier = 0.5 + (adsFixVal / 100.0) * 19.5
-                    centerX = centerX + (yawDiff * yawMultiplier)
-                end
-            end
-            
-                        -- ✅ FOV multiplier (slider-based 1-100)
-            local fovMultiplier = 1.0
-            if isADS and _G.LexusConfig.AimTouchADSFix then
-                local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
-                adsFixVal = math.max(1, math.min(100, adsFixVal))
-                -- 1 = FOV unchanged (1.0x), 100 = FOV 1.5x
-                fovMultiplier = 1.0 + (adsFixVal / 100.0) * 0.5
-            end
-            local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
-            
+           -- ✅ FIXED: ADS scope center correction (no overcorrection)
+if isADS and _G.LexusConfig.AimTouchADSFix then
+    local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+    adsFixVal = math.max(1, math.min(100, adsFixVal))
+    local camRot = nil
+    pcall(function() camRot = camManager:GetCameraRotation() end)
+    local ctrlRot = nil
+    pcall(function() ctrlRot = pc:GetControlRotation() end)
+    if camRot and ctrlRot then
+        local yawDiff = (camRot.Yaw - ctrlRot.Yaw) % 360
+        if yawDiff > 180 then yawDiff = yawDiff - 360 end
+        -- ✅ 0.0x to 1.0x only (slider 50 = 0.5x, slider 100 = 1.0x)
+        local yawMultiplier = (adsFixVal / 100.0)
+        centerX = centerX + (yawDiff * yawMultiplier)
+    end
+end
+
+-- ✅ FIXED: FOV multiplier (only up to 10% extra)
+local fovMultiplier = 1.0
+if isADS and _G.LexusConfig.AimTouchADSFix then
+    local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+    adsFixVal = math.max(1, math.min(100, adsFixVal))
+    -- ✅ 1.0x to 1.1x only (slider 50 = 1.05x, slider 100 = 1.1x)
+    fovMultiplier = 1.0 + (adsFixVal / 100.0) * 0.1
+end
+local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
             -- ═══════════════════════════════════════════════════════════
             -- BONE NAME RESOLUTION
             -- ═══════════════════════════════════════════════════════════
