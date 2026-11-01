@@ -1796,9 +1796,16 @@ do
                
                 -- ================= AIM ADJUST (Low/High) =================
         -- ================= ADS FIX (replaces old Aim Adjust slider) =================
-{Key="LunarAimV2_ADSFix",UI=AliasMap.Switcher,Text="ADS FIX (Scope Aim Correct)",ExpandHandle="LunarAimV2_Main",
-    GetFunc=function() return _G.LexusConfig.AimTouchADSFix ~= false end,
-    SetFunc=function(c,v) _G.LexusConfig.AimTouchADSFix = (v == true or v == 1); return true end},
+        -- ================= ADS FIX SLIDER (1-100) =================
+        {Key="LunarAimV2_ADSFix",UI=AliasMap.Slider,Text="ADS FIX (Scope Aim Correct)",ExpandHandle="LunarAimV2_Main",Min=1,Max=100,
+            GetFunc=function() 
+                return tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50 
+            end,
+            SetFunc=function(c,v) 
+                _G.LexusState.CustomTextData.AimTouchADSFixValue = tonumber(v) or 50
+                _G.LexusConfig.AimTouchADSFix = true
+                return true 
+            end},
 
         -- ================= SHOTGUN =================
         {Key="LunarAimV2_SG",UI=AliasMap.TitleSwitcher,Text="AIMBOT SHOTGUN",ExpandHandle="LunarAimV2_Main",ExpandIndex=0,
