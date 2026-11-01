@@ -6179,12 +6179,16 @@ end -- ✅ FIX: Function close (aap ke code mein missing tha)
         -- ═══════════════════════════════════════════════════════════════════════
     -- 60 FPS LOOP (ticker)
     -- ═══════════════════════════════════════════════════════════════════════
-   local function FastAimbotTickV2()
-    -- Guard: check if this is the active loop
-    if _G.__FastAimbotTickV2Active == false then return end
+   -- Token-based ticker (prevents double loops on reload)
+_G.LexusState = _G.LexusState or {}
+_G.LexusState.AimbotLoopToken = (_G.LexusState.AimbotLoopToken or 0) + 1
+local __currentAimbotToken = _G.LexusState.AimbotLoopToken
+
+local function FastAimbotTickV2()
+    if __currentAimbotToken ~= _G.LexusState.AimbotLoopToken then return end
     
     pcall(function()
-        if _G.LexusConfig and _G.LexusConfig.AimTouchEnable then
+        if _G.LexusConfig and _G.LexusConfig.AimTouchEnable and _G.AimTouch then
             _G.AimTouch()
         end
     end)
@@ -6195,7 +6199,6 @@ end -- ✅ FIX: Function close (aap ke code mein missing tha)
     end
 end
 
-_G.__FastAimbotTickV2Active = true
 local okTicker, ticker = pcall(require, "common.time_ticker")
 if okTicker and ticker and ticker.AddTimerOnce then
     ticker.AddTimerOnce(0.5, FastAimbotTickV2)
