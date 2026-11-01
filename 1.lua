@@ -5841,8 +5841,14 @@ do
                 end
             end
             
+                        -- ✅ FOV multiplier (slider-based 1-100)
             local fovMultiplier = 1.0
-            if isADS and _G.LexusConfig.AimTouchADSFix then fovMultiplier = 1.3 end
+            if isADS and _G.LexusConfig.AimTouchADSFix then
+                local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+                adsFixVal = math.max(1, math.min(100, adsFixVal))
+                -- 1 = FOV unchanged (1.0x), 100 = FOV 1.5x
+                fovMultiplier = 1.0 + (adsFixVal / 100.0) * 0.5
+            end
             local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0) * fovMultiplier
             
             -- ═══════════════════════════════════════════════════════════
@@ -6011,13 +6017,22 @@ do
                 end)
             end
 
+                        -- ═══════════════════════════════════════════════════════════
+            -- ✅ ADS Z-CORRECTION (slider + distance-based)
             -- ═══════════════════════════════════════════════════════════
-            -- ADS Z-CORRECTION (dynamic, distance-based)
-            -- ═══════════════════════════════════════════════════════════
-            if isADS and _G.LexusConfig.AimTouchADSFix then
-                local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
-                local zOffset = math.min(25, math.max(3, distToEnemy * 0.8))
-                finalBonePos.Z = finalBonePos.Z - zOffset
+                        if isADS and _G.LexusConfig.AimTouchADSFix then
+                local adsFixVal = tonumber(_G.LexusState.CustomTextData.AimTouchADSFixValue) or 50
+                adsFixVal = math.max(1, math.min(100, adsFixVal))
+                -- 1 = 20% correction, 100 = 100% correction
+                local rotFactor = 0.2 + (adsFixVal / 100.0) * 0.8
+                local camRot = nil
+                if type(camManager.GetCameraRotation) == "function" then
+                    camRot = camManager:GetCameraRotation()
+                end
+                if camRot then
+                    deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw) * rotFactor
+                    deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch) * rotFactor
+                end
             end
 
             -- ═══════════════════════════════════════════════════════════
