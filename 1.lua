@@ -6016,16 +6016,7 @@ if predVal > 0 then
         if type(bestTarget.GetVelocity) == "function" then
             tVelocity = bestTarget:GetVelocity()
         end
-        if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
-            local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
-            local bulletSpeed = isSniper and 900.0 or 700.0
-            local ToF = (distToEnemy / bulletSpeed) * (predVal / 50.0) 
-            finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
-            finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
-        end
-    end)
-end
-                    
+          
                     if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
                         local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
                         local bulletSpeed = isSniper and 900.0 or 700.0
