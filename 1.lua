@@ -1378,7 +1378,7 @@ local MasterLicenseRuntime = (function()
         local loading = self:_module('loading', nil,
             'client.slua.logic.loading.logic_loading', 'IsShowing')
         if not status or not loading then return nil, 'readiness_services_unavailable' end
-        if static(status, 'IsInFightingStatus') ~= true then return nil, 'waiting_gameplay' end
+      --  if static(status, 'IsInFightingStatus') ~= true then return nil, 'waiting_gameplay' end
         if static(loading, 'IsShowing') ~= false then return nil, 'waiting_loading' end
         return {world = world, controller = pc, pawn = pawn, root = root}
     end
@@ -5387,21 +5387,26 @@ end
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
-                    if _G.GTLMODConfig.Esp7 then
+                                        if _G.GTLMODConfig.Esp7 then
                         pcall(function()
                             local MyHUD = Cached_MyHUD
                             if not Valid(MyHUD) then return end
 
-                            local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
+                            local myTeamId = localPlayer.TeamID or (type(localPlayer.GetTeamID) == "function" and localPlayer:GetTeamID())
                             local myPos = localPlayer:K2_GetActorLocation()
+                            if not myPos then return end
                             local maxDist = 35000
                             local realCount = 0
                             local aiCount = 0
 
                             for _, tPawn in pairs(allCharacters) do
                                 if slua.isValid(tPawn) and tPawn ~= localPlayer then
-                                    local targetTeamId = tPawn.TeamID or tPawn:GetTeamID() or 0
-                                    if targetTeamId ~= myTeamId then
+                                    local targetTeamId = tPawn.TeamID or (type(tPawn.GetTeamID) == "function" and tPawn:GetTeamID())
+                                    local isEnemy = true
+                                    if myTeamId ~= nil and targetTeamId ~= nil and myTeamId == targetTeamId then
+                                        isEnemy = false
+                                    end
+                                    if isEnemy then
                                         local enemyPos = tPawn:K2_GetActorLocation()
                                         if enemyPos then
                                             local dx = enemyPos.X - myPos.X
