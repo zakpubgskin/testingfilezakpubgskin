@@ -5157,6 +5157,7 @@ end
         end
     end)
 
+    local GD = GameplayData
     pcall(function()
         local allCharacters = {}
         pcall(function()
