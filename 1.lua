@@ -5159,12 +5159,16 @@ end
 
     local GD = GameplayData
     pcall(function()
-        local allCharacters = {}
+                local allCharacters = {}
         pcall(function()
-            if GD.GetAllPlayerCharacters then
-                allCharacters = GD.GetAllPlayerCharacters()
-            elseif GD.GameCharacters then
+            if type(GD.GetAllPlayerCharacters) == "function" then
+                allCharacters = GD.GetAllPlayerCharacters() or {}
+            end
+            if (not allCharacters or #allCharacters == 0) and type(GD.GameCharacters) == "table" then
                 for _, char in pairs(GD.GameCharacters) do table.insert(allCharacters, char) end
+            end
+            if #allCharacters == 0 and type(GD.GetAllCharacters) == "function" then
+                allCharacters = GD.GetAllCharacters() or {}
             end
         end)
 
