@@ -3584,7 +3584,7 @@ function _G.InitModMenuTab()
         -- ==================== COMBAT GRAPHIC (SECTION 3) ====================
         local StackCombatGraphic = {
             { Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "CUSTOM IPAD VIEW", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadView end, SetFunc = function(c,v) _G.GTLMODConfig.IpadView = v return true end },
-            { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = ("FOV Value"), ExpandHandle = "ModMenu_Ipad_FOV", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.GTLMODState.CustomTextData.IpadViewFOV or 120 end,  SetFunc = function(c,v) _G.LexusState.CustomTextData.IpadViewFOV = 90 + v return true end },
+            { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = ("FOV Value"), ExpandHandle = "ModMenu_Ipad_FOV", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.GTLMODState.CustomTextData.IpadViewFOV or 120 end,  SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewFOV = 90 + v return true end },
             
             { Key = "ModMenu_IpadScope_Ex", UI = AliasMap.TitleSwitcher, Text = "SMALL SCOPE (IPAD VIEW)", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewScope end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewScope = v return true end },
             { Key = "ModMenu_IpadScope_FOV", UI = AliasMap.Slider, Text = "   SCOPE FOV (20-80)", ExpandHandle = "ModMenu_IpadScope_Ex", MinValue = 20, MaxValue = 80, min = 20, max = 80, GetFunc = function() return _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewScopeFOV = v return true end },
@@ -5183,11 +5183,11 @@ end
             end
         end
 
-        for eKey, markData in pairs(_G.LexusState.EnemyMarks) do
+        for eKey, markData in pairs(_G.GTLMODState.EnemyMarks) do
             if not currentValidKeys[eKey] then
                 if markData.MIDs then markData.MIDs = nil end
                 if markData.MIDs_V3 then markData.MIDs_V3 = nil end
-                _G.LexusState.EnemyMarks[eKey] = nil
+                _G.GTLMODState.EnemyMarks[eKey] = nil
             end
         end
 
