@@ -3850,27 +3850,7 @@ end
 
 
 
-        -- LÃ¡i Xe
-        if isInVehicle then
-            if _G.GTLMODConfig.IpadViewVehicle and _G.GTLMODState.CustomTextData then
-                local targetVeh = _G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120
-                
-                if Valid(uVehCam) and uVehCam.FieldOfView ~= targetVeh then 
-                    uVehCam.FieldOfView = targetVeh 
-                end
-                
-                if targetVeh > 90 then
-                    if type(pc.FOV) == "function" then pc:FOV(targetVeh) end
-                    if Valid(camMgr) then
-                        camMgr.DefaultFOV = targetVeh
-                        if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetVeh) end
-                    end
-                end
-            else
-                if Valid(uVehCam) and uVehCam.FieldOfView ~= 90 then 
-                    uVehCam.FieldOfView = 90 
-                end
-            end
+      
 -- ========================================== 
 -- INITIALIZE THE ESP SYSTEM (BASED)
 -- ========================================== 
@@ -4587,6 +4567,57 @@ local function MainLoop()
             end
         end)
     end
+    -- ⬇️⬇️⬇️ VEHICLE FOV + SCOPE FOV (paste here) ⬇️⬇️⬇️
+    pcall(function()
+        local isAiming = localPlayer.bIsWeaponAiming or localPlayer.bIsGunADS
+        local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
+        local isInVehicle = Valid(currentVehicle) or localPlayer.bIsInVehicle
+        local uTPPCam2 = localPlayer.ThirdPersonCameraComponent
+        local uVehCam = localPlayer.VehicleCameraComponent
+        local camMgr = pc.PlayerCameraManager
+
+        if isAiming then
+            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
+                local targetScope = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
+                if type(pc.FOV) == "function" then pc:FOV(targetScope) end
+                if Valid(camMgr) then
+                    camMgr.DefaultFOV = targetScope
+                    if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetScope) end
+                end
+            end
+            return
+        end
+
+        if not isInVehicle then
+            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
+                local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
+                if Valid(uTPPCam2) and uTPPCam2.FieldOfView ~= targetTPP then 
+                    uTPPCam2.FieldOfView = targetTPP 
+                end
+            end
+        end
+
+        if isInVehicle then
+            if _G.GTLMODConfig.IpadViewVehicle and _G.GTLMODState.CustomTextData then
+                local targetVeh = _G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120
+                if Valid(uVehCam) and uVehCam.FieldOfView ~= targetVeh then 
+                    uVehCam.FieldOfView = targetVeh 
+                end
+                if targetVeh > 90 then
+                    if type(pc.FOV) == "function" then pc:FOV(targetVeh) end
+                    if Valid(camMgr) then
+                        camMgr.DefaultFOV = targetVeh
+                        if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetVeh) end
+                    end
+                end
+            else
+                if Valid(uVehCam) and uVehCam.FieldOfView ~= 90 then 
+                    uVehCam.FieldOfView = 90 
+                end
+            end
+        end
+    end)
+    -- ⬆️⬆️⬆️ PASTE YAHAN KHATAM ⬆️⬆️⬆️
   local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
         -- KÃ­ch hoáº¡t Console Command náº¿u chÆ°a báº­t (Chá» gá»i 1 láº§n)
