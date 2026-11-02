@@ -4567,7 +4567,7 @@ local function MainLoop()
             end
         end)
     end
-    -- ⬇️⬇️⬇️ VEHICLE FOV + SCOPE FOV (paste here) ⬇️⬇️⬇️
+    -- ⬇️⬇️⬇️ VEHICLE FOV + SCOPE FOV ⬇️⬇️⬇️
     pcall(function()
         local isAiming = localPlayer.bIsWeaponAiming or localPlayer.bIsGunADS
         local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
@@ -4617,7 +4617,8 @@ local function MainLoop()
             end
         end
     end)
-    -- ⬆️⬆️⬆️ PASTE YAHAN KHATAM ⬆️⬆️⬆️
+    -- ⬆️⬆️⬆️ VEHICLE FOV END ⬆️⬆️⬆️
+    
   local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
         -- KÃ­ch hoáº¡t Console Command náº¿u chÆ°a báº­t (Chá» gá»i 1 láº§n)
