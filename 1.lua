@@ -4142,11 +4142,29 @@ _G.GetEnemyTargetsFromActors = function(radius)
     end
 
     local allCharacters = {}
-    if GameplayData.GetAllPlayerCharacters then
+pcall(function()
+    if GameplayData.GetAllPlayerCharacters then 
         allCharacters = GameplayData.GetAllPlayerCharacters()
-    elseif GameplayData.GameCharacters then
-        for _, char in pairs(GameplayData.GameCharacters) do table.insert(allCharacters, char) end
     end
+    if (not allCharacters or #allCharacters == 0) and GameplayData.GameCharacters then 
+        for _, char in pairs(GameplayData.GameCharacters) do 
+            table.insert(allCharacters, char) 
+        end 
+    end
+    -- TDM/WoW fallback: saare pawns scan karo
+    if (not allCharacters or #allCharacters == 0) then
+        local GameplayStatics = import("GameplayStatics")
+        local CharacterClass = import("STExtraBaseCharacter") or import("Character")
+        local ui_util = require("client.common.ui_util")
+        local GameInstance = ui_util and ui_util.GetGameInstance()
+        if GameplayStatics and CharacterClass and GameInstance then
+            local actors = GameplayStatics.GetAllActorsOfClass(GameInstance, CharacterClass, slua.Array(UEnums.EPropertyClass.Object, import("Actor")))
+            for _, actor in pairs(actors) do
+                if slua.isValid(actor) then table.insert(allCharacters, actor) end
+            end
+        end
+    end
+end)
 
     local myTeam = player:GetTeamID()
 
@@ -5206,11 +5224,19 @@ end
             return nil
         end
 
-        local mLoc = nil
+                local mLoc = nil
         pcall(function() if type(localPlayer.K2_GetActorLocation) == "function" then mLoc = localPlayer:K2_GetActorLocation() end end)
 
+        local myTeamID = localPlayer.TeamID or (type(localPlayer.GetTeamID) == "function" and localPlayer:GetTeamID())
+
         for _, enemy in pairs(allCharacters) do
-            if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID then
+            if Valid(enemy) and enemy ~= localPlayer then
+                local enemyTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
+                local isEnemy = true
+                if myTeamID ~= nil and enemyTeamID ~= nil and myTeamID == enemyTeamID then
+                    isEnemy = false
+                end
+                if isEnemy then
                 local bIsReallyDead = false
                 pcall(function()
                     if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
@@ -5218,7 +5244,7 @@ end
                     elseif enemy.bIsDeadFlag ~= nil then bIsReallyDead = enemy.bIsDeadFlag end
                     if enemy.HealthStatus ~= nil and enemy.HealthStatus == 2 then bIsReallyDead = true end
                 end)
-
+                -- ⬇️ YAHAN SE NEECHE PURANA CODE WAISA HI RAHEGA ⬇️
                 local eKey = GetSafeEnemyKey(enemy)
                 _G.GTLMODState.EnemyMarks[eKey] = _G.GTLMODState.EnemyMarks[eKey] or { enemy = enemy }
                 local markData = _G.GTLMODState.EnemyMarks[eKey]
