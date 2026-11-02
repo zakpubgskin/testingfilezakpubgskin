@@ -3848,49 +3848,7 @@ local function InitializeGraphicsUnlock()
     Notify("Graphics & FPS 165Hz Unlocked")
 end
 
-local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
-        local isInVehicle = Valid(currentVehicle) or localPlayer.bIsInVehicle
-        local uTPPCam = localPlayer.ThirdPersonCameraComponent
-        local uVehCam = localPlayer.VehicleCameraComponent
-        local camMgr = pc.PlayerCameraManager
 
-        -- 1. Xá»¬ LÃ KHI ÄANG Má» SCOPE (NGáº®M Báº®N)
-        if isAiming then
-            if _G.GTLMODConfig.IpadViewScope and _G.GTLMODState.CustomTextData then
-                local targetScope = _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60
-                if type(pc.FOV) == "function" then pc:FOV(targetScope) end
-                if Valid(camMgr) then
-                    camMgr.DefaultFOV = targetScope
-                    if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetScope) end
-                end
-            else
-                -- Náº¿u táº¯t Ipad Scope, tráº£ láº¡i FOV tháº­t cá»§a Game Äá» ngáº¯m chuáº©n
-                if type(pc.FOV) == "function" then pc:FOV(0) end
-                if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
-            end
-            return -- Ngáº¯t logic Äi bá»/xe vÃ¬ Æ°u tiÃªn Scope
-        end
-
-        -- 2. Xá»¬ LÃ KHI KHÃNG NGáº®M Báº®N (ÄI Bá» HOáº¶C LÃI XE)
-        -- Phá»¥c há»i camera náº¿u trÆ°á»c ÄÃ³ vá»«a táº¯t Scope
-        if not isInVehicle or not _G.GTLMODConfig.IpadViewVehicle then
-            if type(pc.FOV) == "function" then pc:FOV(0) end
-            if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
-        end
-
-        -- Äi Bá»
-        if not isInVehicle then
-            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
-                local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
-                if Valid(uTPPCam) and uTPPCam.FieldOfView ~= targetTPP then 
-                    uTPPCam.FieldOfView = targetTPP 
-                end
-            else
-                if Valid(uTPPCam) and uTPPCam.FieldOfView ~= 90 then 
-                    uTPPCam.FieldOfView = 90 
-                end
-            end
-        end
 
         -- LÃ¡i Xe
         if isInVehicle then
@@ -6353,4 +6311,3 @@ return require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
     ParachuteFormation = "GameLua.Mod.BaseMod.GamePlay.Feature.ParachuteFormationFeature"
   }
 }, "BRPlayerCharacterBase")
-end
