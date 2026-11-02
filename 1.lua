@@ -3913,9 +3913,6 @@ local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicl
                     uVehCam.FieldOfView = 90 
                 end
             end
-        end
-    end)
-    
 -- ========================================== 
 -- INITIALIZE THE ESP SYSTEM (BASED)
 -- ========================================== 
@@ -6356,3 +6353,4 @@ return require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
     ParachuteFormation = "GameLua.Mod.BaseMod.GamePlay.Feature.ParachuteFormationFeature"
   }
 }, "BRPlayerCharacterBase")
+end
