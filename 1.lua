@@ -2337,6 +2337,8 @@ _G.GTLMODConfig = _G.GTLMODConfig or {
     UnlockFPS = false, 
     IpadView = false, 
     IpadViewVehicle = false,
+    IpadViewScope = false,
+    IpadViewScopeFOV = 60,
     CustomAimbot = false, 
     CustomAimbotClose = false, 
     CustomHRecoil = false,  
@@ -3468,7 +3470,7 @@ function _G.InitModMenuTab()
     _G.ModMenuInitialized = true
 
     _G.GTLMODState.CustomTextData = _G.GTLMODState.CustomTextData or {
-        OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120, IpadViewVehicleFOV = 120,
+        OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120,   IpadViewScopeFOV = 60, IpadViewVehicleFOV = 120,
         AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250,
         AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30,
         AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchScopePred = 0, AimTouchScopeRecoil = 0,
@@ -3582,8 +3584,10 @@ function _G.InitModMenuTab()
         -- ==================== COMBAT GRAPHIC (SECTION 3) ====================
         local StackCombatGraphic = {
             { Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "CUSTOM IPAD VIEW", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadView end, SetFunc = function(c,v) _G.GTLMODConfig.IpadView = v return true end },
+            { Key = "ModMenu_IpadScope_Ex", UI = AliasMap.TitleSwitcher, Text = "SMALL SCOPE (IPAD VIEW)", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewScope end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewScope = v return true end },
+            { Key = "ModMenu_IpadScope_FOV", UI = AliasMap.Slider, Text = "   SCOPE FOV (1-100)", ExpandHandle = "ModMenu_IpadScope_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60) - 20 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewScopeFOV = 20 + v return true end },
             { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = "   IPAD FOV (1-100)", ExpandHandle = "ModMenu_Ipad_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewFOV or 120) - 80 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewFOV = 80 + v return true end },
-            { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("Ipad View Vehicle"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
+            { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("IPAD VIEW VEHICLE"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
             { Key = "ModMenu_IpadViewVehicle_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
             { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "165 REAL FPS", GetFunc = function() return _G.GTLMODConfig.UnlockFPS end, SetFunc = function(c,v) _G.GTLMODConfig.UnlockFPS = v; if v then _G.GTLMODState.GraphicsUnlocked = false end return true end },
             { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.wallhackng end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v return true end },
@@ -4551,7 +4555,7 @@ local function MainLoop()
     InitializeNativeESP()
     ShowGTLMODVIPMenu()
     
-    if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
+   if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
         pcall(function()
             local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
             local uTPPCam = localPlayer.ThirdPersonCameraComponent
@@ -4567,7 +4571,7 @@ local function MainLoop()
             end
         end)
     end
-    -- ⬇️⬇️⬇️ VEHICLE FOV + SCOPE FOV ⬇️⬇️⬇️
+    -- ⬇️⬇️⬇️ VEHICLE FOV + SMALL SCOPE FOV ⬇️⬇️⬇️
     pcall(function()
         local isAiming = localPlayer.bIsWeaponAiming or localPlayer.bIsGunADS
         local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
@@ -4577,13 +4581,16 @@ local function MainLoop()
         local camMgr = pc.PlayerCameraManager
 
         if isAiming then
-            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
-                local targetScope = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
+            if _G.GTLMODConfig.IpadViewScope and _G.GTLMODState.CustomTextData then
+                local targetScope = _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60
                 if type(pc.FOV) == "function" then pc:FOV(targetScope) end
                 if Valid(camMgr) then
                     camMgr.DefaultFOV = targetScope
                     if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetScope) end
                 end
+            else
+                if type(pc.FOV) == "function" then pc:FOV(0) end
+                if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
             end
             return
         end
