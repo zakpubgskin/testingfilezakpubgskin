@@ -5158,71 +5158,47 @@ end
 
     pcall(function()
         local allCharacters = {}
-        if GameplayData.GetAllPlayerCharacters then allCharacters = GameplayData.GetAllPlayerCharacters()
-        elseif GameplayData.GameCharacters then for _, char in pairs(GameplayData.GameCharacters) do table.insert(allCharacters, char) end end
-        
+        pcall(function()
+            if GD.GetAllPlayerCharacters then
+                allCharacters = GD.GetAllPlayerCharacters()
+            elseif GD.GameCharacters then
+                for _, char in pairs(GD.GameCharacters) do table.insert(allCharacters, char) end
+            end
+        end)
+
         local currentValidKeys = {}
         for _, enemy in pairs(allCharacters) do
-            if Valid(enemy) and enemy ~= localPlayer then
-                currentValidKeys[GetSafeEnemyKey(enemy)] = true
-            end
-        end
-        
-        for key, data in pairs(_G.GTLMODState.EnemyMarks) do
-            if not currentValidKeys[key] then
-                SafeRemoveMark(data.radarMark)
-                SafeRemoveMark(data.hpMark)
-                SafeRemoveMark(data.distMark)
-                
-                if _G.AimTouchVisCache and _G.AimTouchVisCache[key] then
-                    _G.AimTouchVisCache[key] = nil
-                end
-                
-                if data.MIDs then
-                    for meshStr, midTable in pairs(data.MIDs) do
-                        for k, _ in pairs(midTable) do
-                            midTable[k] = nil
-                        end
-                    end
-                    data.MIDs = nil
-                end
-                
-                data.enemy = nil
-                data.CachedMeshes = nil
-                _G.GTLMODState.EnemyMarks[key] = nil
-            end
-        end
-
-        local realCount = 0
-        local aiCount = 0
-
-        local function GetFirstElemSafe(elemArray)
-            if elemArray and type(elemArray.Num) == "function" and elemArray:Num() > 0 then
-                if type(elemArray.Get) == "function" then return elemArray:Get(0) end
-            elseif elemArray and type(elemArray) == "table" and #elemArray > 0 then
-                return elemArray[1]
-            end
-            return nil
-        end
-
-                local mLoc = nil
-        pcall(function() if type(localPlayer.K2_GetActorLocation) == "function" then mLoc = localPlayer:K2_GetActorLocation() end end)
-
-        local myTeamID = localPlayer.TeamID or (type(localPlayer.GetTeamID) == "function" and localPlayer:GetTeamID())
-
-        for _, enemy in pairs(allCharacters) do
-            if Valid(enemy) and enemy ~= localPlayer then
-                local enemyTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
-                local isEnemy = true
-                if myTeamID ~= nil and enemyTeamID ~= nil and myTeamID == enemyTeamID then
-                    isEnemy = false
-                end
-                if isEnemy then
+            if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID then
                 local bIsReallyDead = false
                 pcall(function()
                     if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
-                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead
-                    elseif enemy.bIsDeadFlag ~= nil then bIsReallyDead = enemy.bIsDeadFlag end
+                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead end
+                    if enemy.HealthStatus ~= nil and enemy.HealthStatus == 2 then bIsReallyDead = true end
+                end)
+                if not bIsReallyDead then
+                    local eKey = GetSafeEnemyKey(enemy)
+                    currentValidKeys[eKey] = true
+                end
+            end
+        end
+
+        for eKey, markData in pairs(_G.LexusState.EnemyMarks) do
+            if not currentValidKeys[eKey] then
+                if markData.MIDs then markData.MIDs = nil end
+                if markData.MIDs_V3 then markData.MIDs_V3 = nil end
+                _G.LexusState.EnemyMarks[eKey] = nil
+            end
+        end
+
+        local aiCount = 0
+        local realCount = 0
+
+        for _, enemy in pairs(allCharacters) do
+            if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID then
+                local bIsReallyDead = false
+                pcall(function()
+                    if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
+                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead end
                     if enemy.HealthStatus ~= nil and enemy.HealthStatus == 2 then bIsReallyDead = true end
                 end)
                 -- ⬇️ YAHAN SE NEECHE PURANA CODE WAISA HI RAHEGA ⬇️
