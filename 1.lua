@@ -1378,7 +1378,7 @@ local MasterLicenseRuntime = (function()
         local loading = self:_module('loading', nil,
             'client.slua.logic.loading.logic_loading', 'IsShowing')
         if not status or not loading then return nil, 'readiness_services_unavailable' end
-      --  if static(status, 'IsInFightingStatus') ~= true then return nil, 'waiting_gameplay' end
+       if static(status, 'IsInFightingStatus') ~= true then return nil, 'waiting_gameplay' end
         if static(loading, 'IsShowing') ~= false then return nil, 'waiting_loading' end
         return {world = world, controller = pc, pawn = pawn, root = root}
     end
