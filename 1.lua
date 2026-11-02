@@ -4141,49 +4141,20 @@ _G.GetEnemyTargetsFromActors = function(radius)
     end
 
     local allCharacters = {}
-    pcall(function()
-        if GameplayData.GetAllPlayerCharacters then 
-            allCharacters = GameplayData.GetAllPlayerCharacters()
-        end
-        if (not allCharacters or #allCharacters == 0) and GameplayData.GameCharacters then 
-            for _, char in pairs(GameplayData.GameCharacters) do 
-                table.insert(allCharacters, char) 
-            end 
-        end
-        -- TDM/WoW fallback: saare pawns scan karo
-        if (not allCharacters or #allCharacters == 0) then
-            local GameplayStatics = import("GameplayStatics")
-            local CharacterClass = import("STExtraBaseCharacter") or import("Character")
-            local ui_util = require("client.common.ui_util")
-            local GameInstance = ui_util and ui_util.GetGameInstance()
-            if GameplayStatics and CharacterClass and GameInstance then
-                local actors = GameplayStatics.GetAllActorsOfClass(GameInstance, CharacterClass, slua.Array(UEnums.EPropertyClass.Object, import("Actor")))
-                for _, actor in pairs(actors) do
-                    if slua.isValid(actor) then table.insert(allCharacters, actor) end
-                end
-            end
-        end
-    end)
+    if GameplayData.GetAllPlayerCharacters then
+        allCharacters = GameplayData.GetAllPlayerCharacters()
+    elseif GameplayData.GameCharacters then
+        for _, char in pairs(GameplayData.GameCharacters) do table.insert(allCharacters, char) end
+    end
 
-    local myTeam = player.TeamID or (type(player.GetTeamID) == "function" and player:GetTeamID())
+    local myTeam = player:GetTeamID()
 
     for _, actor in pairs(allCharacters) do
-        if slua.isValid(actor) and actor ~= player then
-            local actorTeam = actor.TeamID or (type(actor.GetTeamID) == "function" and actor:GetTeamID())
-            local isEnemy = true
-            if myTeam ~= nil and actorTeam ~= nil and myTeam == actorTeam then
-                isEnemy = false
-            end
-            if isEnemy then
-                local isAlive = true
-                pcall(function()
-                    if type(actor.IsAlive) == "function" then isAlive = actor:IsAlive() end
-                end)
-                if isAlive then
-                    local dist = player:GetDistanceTo(actor)
-                    if dist <= radius then
-                        table.insert(result, actor)
-                    end
+        if slua.isValid(actor) and actor ~= player and actor.GetTeamID and actor:IsAlive() then
+            if actor:GetTeamID() ~= myTeam then
+                local dist = player:GetDistanceTo(actor)
+                if dist <= radius then
+                    table.insert(result, actor)
                 end
             end
         end
