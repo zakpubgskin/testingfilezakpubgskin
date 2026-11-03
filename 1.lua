@@ -5606,11 +5606,9 @@ end
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
-                    if _G.GTLMODConfig.Esp7 then
+                   if _G.GTLMODConfig.Esp7 then
                         pcall(function()
-                            local MyHUD = Cached_MyHUD
-                            if not Valid(MyHUD) then return end
-
+                            -- === COUNT ENEMIES (existing logic) ===
                             local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
                             local myPos = localPlayer:K2_GetActorLocation()
                             local maxDist = 35000
@@ -5629,33 +5627,328 @@ end
                                             local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
                                             if dist <= maxDist then
                                                 local isAI = false
-                                                if tPawn.bIsAI == true or tPawn.IsAI == true then
-                                                    isAI = true
-                                                end
+                                                if tPawn.bIsAI == true or tPawn.IsAI == true then isAI = true end
                                                 if not isAI then
                                                     local pState = tPawn.PlayerState or (type(tPawn.GetPlayerState) == "function" and tPawn:GetPlayerState())
-                                                    if slua.isValid(pState) and (pState.bIsABot == true or pState.bIsBot == true) then
-                                                        isAI = true
-                                                    end
+                                                    if slua.isValid(pState) and (pState.bIsABot == true or pState.bIsBot == true) then isAI = true end
                                                 end
-                                                if isAI then
-                                                    aiCount = aiCount + 1
-                                                else
-                                                    realCount = realCount + 1
-                                                end
+                                                if isAI then aiCount = aiCount + 1
+                                                else realCount = realCount + 1 end
                                             end
                                         end
                                     end
                                 end
                             end
 
-                            local totalEnemy = realCount + aiCount
-                            if totalEnemy > 0 then
-                                local text = string.format("ENEMY (P: %d | B: %d)", realCount, aiCount)
-                                MyHUD:AddDebugText(text, localPlayer, 1.2, {X=0, Y=0, Z=150}, {X=0, Y=0, Z=150}, {R=255, G=255, B=255, A=255}, true, false, true, nil, 1.0, true)
-                            else
-                                MyHUD:AddDebugText("(CLEAR ENEMY - @ZakPubgSkin)", localPlayer, 1.2, {X=0, Y=0, Z=150}, {X=0, Y=0, Z=150}, {R=0, G=255, B=0, A=255}, true, false, true, nil, 1.0, true)
+                            -- === PREMIUM UI BUILD/UPDATE ===
+                            local root = nil
+                            pcall(function()
+                                local ui = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
+                                if ui and ui.GetMainControlBaseUI then root = ui.GetMainControlBaseUI() end
+                            end)
+                            if not (slua and slua.isValid and slua.isValid(root)) then return end
+                            local canvas = nil
+                            pcall(function()
+                                if slua.isValid(root.CanvasPanel_0) then canvas = root.CanvasPanel_0
+                                elseif slua.isValid(root.CanvasPanel_42) then canvas = root.CanvasPanel_42 end
+                            end)
+                            if not (slua and slua.isValid and slua.isValid(canvas)) then return end
+
+                            local V2 = _G.FVector2D
+                            if not V2 then pcall(function() V2 = import("Vector2D") end) end
+                            local LC = _G.FLinearColor
+                            if not LC then pcall(function() LC = import("LinearColor") end) end
+
+                            local function col(r, g, b, a)
+                                if LC then
+                                    local ok, c = pcall(LC, r, g, b, a or 1.0)
+                                    if ok and c then return c end
+                                end
+                                return {R=r, G=g, B=b, A=a or 1.0}
                             end
+
+                            -- Premium palette
+                            local COL_NEON_RED      = col(1.00, 0.18, 0.32, 1.0)
+                            local COL_RED_GLOW      = col(1.00, 0.10, 0.20, 0.40)
+                            local COL_RED_BG_TOP    = col(0.42, 0.04, 0.10, 0.96)
+                            local COL_RED_BG_BOT    = col(0.18, 0.02, 0.06, 0.96)
+                            local COL_NEON_GREEN    = col(0.18, 1.00, 0.55, 1.0)
+                            local COL_GREEN_GLOW    = col(0.10, 1.00, 0.45, 0.40)
+                            local COL_GREEN_BG_TOP  = col(0.03, 0.32, 0.15, 0.96)
+                            local COL_GREEN_BG_BOT  = col(0.01, 0.15, 0.07, 0.96)
+                            local COL_DARK_BASE     = col(0.02, 0.02, 0.04, 0.94)
+                            local COL_WHITE         = col(1.00, 1.00, 1.00, 1.0)
+                            local COL_GREY_TEXT     = col(0.55, 0.55, 0.60, 1.0)
+                            local COL_GOLD          = col(1.00, 0.84, 0.30, 1.0)
+
+                            _G.__ESP7_UI = _G.__ESP7_UI or {}
+                            local U = _G.__ESP7_UI
+
+                            if not (slua.isValid(U.Base)) then
+                                local function mkBorder(color)
+                                    local w = nil
+                                    pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.Border", canvas) end)
+                                    if not (slua and slua.isValid and slua.isValid(w)) then return nil end
+                                    pcall(function()
+                                        w:SetBrushColor(color)
+                                        w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                                    end)
+                                    return w
+                                end
+                                local function mkText(txt, color, size)
+                                    local w = nil
+                                    pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.TextBlock", canvas) end)
+                                    if not (slua and slua.isValid and slua.isValid(w)) then return nil end
+                                    pcall(function()
+                                        w:SetText(txt)
+                                        w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                                        local sc = LC and LC(color.R, color.G, color.B, color.A) or color
+                                        w:SetColorAndOpacity(sc)
+                                        if w.SetJustification then w:SetJustification(1) end
+                                        local f = w.Font
+                                        if f then f.Size = size; w:SetFont(f) end
+                                    end)
+                                    return w
+                                end
+                                local function mkSlot(widget, x, y, w, h, z)
+                                    local s = nil
+                                    pcall(function() s = canvas:AddChildToCanvas(widget) end)
+                                    if not s then return nil end
+                                    pcall(function()
+                                        s:SetAutoSize(false)
+                                        s:SetPosition(V2(x, y))
+                                        s:SetSize(V2(w, h))
+                                        s:SetZOrder(z)
+                                    end)
+                                    return s
+                                end
+
+                                U.W, U.H = 300, 48
+                                U.Half = U.W * 0.5
+                                U.Pad = 2
+
+                                -- Outer glows
+                                U.RedGlow = mkBorder(COL_RED_GLOW)
+                                U.RedGlowSlot = U.RedGlow and mkSlot(U.RedGlow, 0, 0, U.Half - 2, U.H, 44)
+                                U.GreenGlow = mkBorder(COL_GREEN_GLOW)
+                                U.GreenGlowSlot = U.GreenGlow and mkSlot(U.GreenGlow, U.Half + 2, 0, U.Half - 2, U.H, 44)
+
+                                -- Dark base
+                                U.Base = mkBorder(COL_DARK_BASE)
+                                U.BaseSlot = U.Base and mkSlot(U.Base, 0, 0, U.W, U.H, 45)
+
+                                -- Gradient strips (red)
+                                U.RedTop = mkBorder(COL_RED_BG_TOP)
+                                U.RedTopSlot = U.RedTop and mkSlot(U.RedTop, U.Pad, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
+                                U.RedBot = mkBorder(COL_RED_BG_BOT)
+                                U.RedBotSlot = U.RedBot and mkSlot(U.RedBot, U.Pad, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
+
+                                -- Gradient strips (green)
+                                U.GreenTop = mkBorder(COL_GREEN_BG_TOP)
+                                U.GreenTopSlot = U.GreenTop and mkSlot(U.GreenTop, U.Half + 1, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
+                                U.GreenBot = mkBorder(COL_GREEN_BG_BOT)
+                                U.GreenBotSlot = U.GreenBot and mkSlot(U.GreenBot, U.Half + 1, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
+
+                                -- Neon borders (red)
+                                U.RedBorderTop = mkBorder(COL_NEON_RED)
+                                U.RedBorderTopSlot = U.RedBorderTop and mkSlot(U.RedBorderTop, U.Pad, U.Pad, U.Half - U.Pad - 1, 1, 47)
+                                U.RedBorderBot = mkBorder(COL_NEON_RED)
+                                U.RedBorderBotSlot = U.RedBorderBot and mkSlot(U.RedBorderBot, U.Pad, U.H - U.Pad - 1, U.Half - U.Pad - 1, 1, 47)
+                                U.RedBorderLeft = mkBorder(COL_NEON_RED)
+                                U.RedBorderLeftSlot = U.RedBorderLeft and mkSlot(U.RedBorderLeft, U.Pad, U.Pad, 1, U.H - U.Pad * 2, 47)
+
+                                -- Neon borders (green)
+                                U.GreenBorderTop = mkBorder(COL_NEON_GREEN)
+                                U.GreenBorderTopSlot = U.GreenBorderTop and mkSlot(U.GreenBorderTop, U.Half + 1, U.Pad, U.Half - U.Pad - 1, 1, 47)
+                                U.GreenBorderBot = mkBorder(COL_NEON_GREEN)
+                                U.GreenBorderBotSlot = U.GreenBorderBot and mkSlot(U.GreenBorderBot, U.Half + 1, U.H - U.Pad - 1, U.Half - U.Pad - 1, 1, 47)
+                                U.GreenBorderRight = mkBorder(COL_NEON_GREEN)
+                                U.GreenBorderRightSlot = U.GreenBorderRight and mkSlot(U.GreenBorderRight, U.W - U.Pad - 1, U.Pad, 1, U.H - U.Pad * 2, 47)
+
+                                -- Center divider
+                                U.DividerGlow = mkBorder(col(1, 1, 1, 0.35))
+                                U.DividerGlowSlot = U.DividerGlow and mkSlot(U.DividerGlow, U.Half - 2, 4, 4, U.H - 8, 48)
+                                U.Divider = mkBorder(col(0.85, 0.85, 0.95, 0.95))
+                                U.DividerSlot = U.Divider and mkSlot(U.Divider, U.Half - 1, 4, 2, U.H - 8, 49)
+
+                                -- Gold corner accents
+                                local A = 6
+                                U.RedCornerTL = mkBorder(COL_GOLD)
+                                U.RedCornerTLSlot = U.RedCornerTL and mkSlot(U.RedCornerTL, U.Pad, U.Pad, A, 2, 50)
+                                U.RedCornerTLV = mkBorder(COL_GOLD)
+                                U.RedCornerTLVSlot = U.RedCornerTLV and mkSlot(U.RedCornerTLV, U.Pad, U.Pad, 2, A, 50)
+                                U.GreenCornerTR = mkBorder(COL_GOLD)
+                                U.GreenCornerTRSlot = U.GreenCornerTR and mkSlot(U.GreenCornerTR, U.W - U.Pad - A, U.Pad, A, 2, 50)
+                                U.GreenCornerTRV = mkBorder(COL_GOLD)
+                                U.GreenCornerTRVSlot = U.GreenCornerTRV and mkSlot(U.GreenCornerTRV, U.W - U.Pad - 2, U.Pad, 2, A, 50)
+                                U.RedCornerBL = mkBorder(COL_GOLD)
+                                U.RedCornerBLSlot = U.RedCornerBL and mkSlot(U.RedCornerBL, U.Pad, U.H - U.Pad - 2, A, 2, 50)
+                                U.RedCornerBLV = mkBorder(COL_GOLD)
+                                U.RedCornerBLVSlot = U.RedCornerBLV and mkSlot(U.RedCornerBLV, U.Pad, U.H - U.Pad - A, 2, A, 50)
+                                U.GreenCornerBR = mkBorder(COL_GOLD)
+                                U.GreenCornerBRSlot = U.GreenCornerBR and mkSlot(U.GreenCornerBR, U.W - U.Pad - A, U.H - U.Pad - 2, A, 2, 50)
+                                U.GreenCornerBRV = mkBorder(COL_GOLD)
+                                U.GreenCornerBRVSlot = U.GreenCornerBRV and mkSlot(U.GreenCornerBRV, U.W - U.Pad - 2, U.H - U.Pad - A, 2, A, 50)
+
+                                -- Labels
+                                U.RealLabel = mkText("REAL  0", COL_WHITE, 18)
+                                U.RealLabelSlot = U.RealLabel and mkSlot(U.RealLabel, U.Pad, 0, U.Half - U.Pad - 2, U.H, 52)
+                                U.BotLabel = mkText("BOT  0", COL_WHITE, 18)
+                                U.BotLabelSlot = U.BotLabel and mkSlot(U.BotLabel, U.Half + 1, 0, U.Half - U.Pad - 1, U.H, 52)
+
+                                -- Icons
+                                U.RealIcon = mkText("◆", COL_NEON_RED, 12)
+                                U.RealIconSlot = U.RealIcon and mkSlot(U.RealIcon, U.Pad + 6, 0, 18, U.H, 53)
+                                U.BotIcon = mkText("◆", COL_NEON_GREEN, 12)
+                                U.BotIconSlot = U.BotIcon and mkSlot(U.BotIcon, U.Half + 6, 0, 18, U.H, 53)
+
+                                U.LastReal, U.LastBot = -1, -1
+                                U.LastX, U.LastY = nil, nil
+                                U.Visible = false
+                                U.PulseClock = 0
+                                U.LastTick = os.clock()
+                            end
+
+                            -- Update labels
+                            if U.LastReal ~= realCount and slua.isValid(U.RealLabel) then
+                                pcall(function() U.RealLabel:SetText(string.format("REAL  %d", realCount)) end)
+                                U.LastReal = realCount
+                            end
+                            if U.LastBot ~= aiCount and slua.isValid(U.BotLabel) then
+                                pcall(function() U.BotLabel:SetText(string.format("BOT  %d", aiCount)) end)
+                                U.LastBot = aiCount
+                            end
+
+                            -- Pulse animation
+                            local nowT = os.clock()
+                            local dt = nowT - (U.LastTick or nowT)
+                            U.LastTick = nowT
+                            U.PulseClock = (U.PulseClock or 0) + dt
+                            local pulse = 0.5 + 0.5 * math.sin(U.PulseClock * 3.0)
+
+                            -- Label colors
+                            if slua.isValid(U.RealLabel) then
+                                local c = (realCount > 0) and COL_WHITE or COL_GREY_TEXT
+                                pcall(function() U.RealLabel:SetColorAndOpacity(LC and LC(c.R, c.G, c.B, c.A) or c) end)
+                            end
+                            if slua.isValid(U.BotLabel) then
+                                local c = (aiCount > 0) and COL_WHITE or COL_GREY_TEXT
+                                pcall(function() U.BotLabel:SetColorAndOpacity(LC and LC(c.R, c.G, c.B, c.A) or c) end)
+                            end
+
+                            -- Neon pulse on borders
+                            if slua.isValid(U.RedBorderTop) then
+                                local a = (realCount > 0) and (0.65 + pulse * 0.35) or 0.20
+                                pcall(function() U.RedBorderTop:SetBrushColor(col(1.00, 0.18, 0.32, a)) end)
+                                if slua.isValid(U.RedBorderBot) then pcall(function() U.RedBorderBot:SetBrushColor(col(1.00, 0.18, 0.32, a)) end) end
+                                if slua.isValid(U.RedBorderLeft) then pcall(function() U.RedBorderLeft:SetBrushColor(col(1.00, 0.18, 0.32, a)) end) end
+                            end
+                            if slua.isValid(U.GreenBorderTop) then
+                                local a = (aiCount > 0) and (0.65 + pulse * 0.35) or 0.20
+                                pcall(function() U.GreenBorderTop:SetBrushColor(col(0.18, 1.00, 0.55, a)) end)
+                                if slua.isValid(U.GreenBorderBot) then pcall(function() U.GreenBorderBot:SetBrushColor(col(0.18, 1.00, 0.55, a)) end) end
+                                if slua.isValid(U.GreenBorderRight) then pcall(function() U.GreenBorderRight:SetBrushColor(col(0.18, 1.00, 0.55, a)) end) end
+                            end
+
+                            -- Icons pulse
+                            if slua.isValid(U.RealIcon) then
+                                local a = (realCount > 0) and (0.7 + pulse * 0.3) or 0.25
+                                pcall(function() U.RealIcon:SetColorAndOpacity(col(1.00, 0.18, 0.32, a)) end)
+                            end
+                            if slua.isValid(U.BotIcon) then
+                                local a = (aiCount > 0) and (0.7 + pulse * 0.3) or 0.25
+                                pcall(function() U.BotIcon:SetColorAndOpacity(col(0.18, 1.00, 0.55, a)) end)
+                            end
+
+                            -- Position (top-center)
+                            local vw = nil
+                            pcall(function()
+                                local WL = import("WidgetLayoutLibrary")
+                                if WL and WL.GetViewportSize then
+                                    local v = WL.GetViewportSize(pc)
+                                    if v then vw = tonumber(v.X) end
+                                end
+                            end)
+                            if not vw and pc then pcall(function() vw = tonumber(pc:GetViewportSize()) end) end
+                            if not vw then vw = 1920 end
+
+                            local scale = 1.0
+                            pcall(function()
+                                local WL = import("WidgetLayoutLibrary")
+                                if WL and WL.GetViewportScale then
+                                    local s = WL.GetViewportScale(pc)
+                                    if s and s >= 0.01 and s <= 100 then scale = s end
+                                end
+                            end)
+                            local cx = (vw * 0.5) / scale
+                            local x = cx - U.W * 0.5
+                            local y = 42.0
+
+                            if U.LastX ~= x or U.LastY ~= y then
+                                local function setPos(slot, px, py)
+                                    if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(px, py)) end) end
+                                end
+                                setPos(U.RedGlowSlot, x, y)
+                                setPos(U.GreenGlowSlot, x + U.Half + 2, y)
+                                setPos(U.BaseSlot, x, y)
+                                setPos(U.RedTopSlot, x + U.Pad, y + U.Pad)
+                                setPos(U.RedBotSlot, x + U.Pad, y + U.H * 0.55)
+                                setPos(U.GreenTopSlot, x + U.Half + 1, y + U.Pad)
+                                setPos(U.GreenBotSlot, x + U.Half + 1, y + U.H * 0.55)
+                                setPos(U.RedBorderTopSlot, x + U.Pad, y + U.Pad)
+                                setPos(U.RedBorderBotSlot, x + U.Pad, y + U.H - U.Pad - 1)
+                                setPos(U.RedBorderLeftSlot, x + U.Pad, y + U.Pad)
+                                setPos(U.GreenBorderTopSlot, x + U.Half + 1, y + U.Pad)
+                                setPos(U.GreenBorderBotSlot, x + U.Half + 1, y + U.H - U.Pad - 1)
+                                setPos(U.GreenBorderRightSlot, x + U.W - U.Pad - 1, y + U.Pad)
+                                setPos(U.DividerGlowSlot, x + U.Half - 2, y + 4)
+                                setPos(U.DividerSlot, x + U.Half - 1, y + 4)
+                                setPos(U.RedCornerTLSlot, x + U.Pad, y + U.Pad)
+                                setPos(U.RedCornerTLVSlot, x + U.Pad, y + U.Pad)
+                                setPos(U.GreenCornerTRSlot, x + U.W - U.Pad - 6, y + U.Pad)
+                                setPos(U.GreenCornerTRVSlot, x + U.W - U.Pad - 2, y + U.Pad)
+                                setPos(U.RedCornerBLSlot, x + U.Pad, y + U.H - U.Pad - 2)
+                                setPos(U.RedCornerBLVSlot, x + U.Pad, y + U.H - U.Pad - 6)
+                                setPos(U.GreenCornerBRSlot, x + U.W - U.Pad - 6, y + U.H - U.Pad - 2)
+                                setPos(U.GreenCornerBRVSlot, x + U.W - U.Pad - 2, y + U.H - U.Pad - 6)
+                                setPos(U.RealLabelSlot, x + U.Pad, y)
+                                setPos(U.BotLabelSlot, x + U.Half + 1, y)
+                                setPos(U.RealIconSlot, x + U.Pad + 6, y)
+                                setPos(U.BotIconSlot, x + U.Half + 6, y)
+                                U.LastX, U.LastY = x, y
+                            end
+
+                            -- Show all pieces
+                            if not U.Visible then
+                                for _, f in ipairs({"RedGlow","GreenGlow","Base","RedTop","RedBot","GreenTop","GreenBot",
+                                    "RedBorderTop","RedBorderBot","RedBorderLeft","GreenBorderTop","GreenBorderBot","GreenBorderRight",
+                                    "DividerGlow","Divider",
+                                    "RedCornerTL","RedCornerTLV","GreenCornerTR","GreenCornerTRV",
+                                    "RedCornerBL","RedCornerBLV","GreenCornerBR","GreenCornerBRV",
+                                    "RealLabel","BotLabel","RealIcon","BotIcon"}) do
+                                    if slua.isValid(U[f]) then
+                                        pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+                                    end
+                                end
+                                U.Visible = true
+                            end
+                        end)
+                    else
+                        -- Esp7 OFF → hide upgraded counter
+                        pcall(function()
+                            local U = _G.__ESP7_UI
+                            if not U then return end
+                            for _, f in ipairs({"RedGlow","GreenGlow","Base","RedTop","RedBot","GreenTop","GreenBot",
+                                "RedBorderTop","RedBorderBot","RedBorderLeft","GreenBorderTop","GreenBorderBot","GreenBorderRight",
+                                "DividerGlow","Divider",
+                                "RedCornerTL","RedCornerTLV","GreenCornerTR","GreenCornerTRV",
+                                "RedCornerBL","RedCornerBLV","GreenCornerBR","GreenCornerBRV",
+                                "RealLabel","BotLabel","RealIcon","BotIcon"}) do
+                                if slua and slua.isValid and slua.isValid(U[f]) then
+                                    pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+                                end
+                            end
+                            U.Visible = false
                         end)
                     end
                     if showFrameUI then
