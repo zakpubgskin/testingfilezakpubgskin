@@ -993,7 +993,7 @@ local MasterLoginUI = (function()
     end
     return Module
 end)()
-_G.__MASTER_LOGIN_UI = MasterLoginUI
+
 -- ============================================================================
 -- 3. WELCOME UI
 -- ============================================================================
@@ -2299,90 +2299,6 @@ local C_YELLOW = {R=255, G=255, B=0, A=255}
 local C_WHITE = {R=255, G=255, B=255, A=255}
 local C_BLUE_TEXT = {R=0, G=200, B=255, A=255}
 local SCALE_COLOR_V2 = {R=3, G=3, B=0, A=0}
--- ==========================================
--- PREMIUM UI CORE (shared, built once)
--- Does NOT touch any ID, mark, or config.
--- ==========================================
-local function _PremiumUI()
-    -- Cache valid only if canvas still alive (naya match = naya canvas)
-    if _G.__PREMIUM_UI_OK and _G.__PREMIUM_UI then
-        local c = _G.__PREMIUM_UI.Canvas
-        if slua and slua.isValid and slua.isValid(c) then
-            return _G.__PREMIUM_UI
-        end
-        -- Canvas died (map reload) → clear cache, rebuild below
-        _G.__PREMIUM_UI = nil
-        _G.__PREMIUM_UI_OK = false
-    end
-
-    local root = nil
-    pcall(function()
-        local ui = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
-        if ui and ui.GetMainControlBaseUI then root = ui.GetMainControlBaseUI() end
-    end)
-    if not (slua and slua.isValid and slua.isValid(root)) then return nil end
-
-    local canvas = nil
-    pcall(function()
-        if slua.isValid(root.CanvasPanel_0)  then canvas = root.CanvasPanel_0
-        elseif slua.isValid(root.CanvasPanel_42) then canvas = root.CanvasPanel_42 end
-    end)
-    if not (slua and slua.isValid and slua.isValid(canvas)) then return nil end
-
-    local V2 = _G.FVector2D
-    if not V2 then pcall(function() V2 = import("Vector2D") end) end
-    local LC = _G.FLinearColor
-    if not LC then pcall(function() LC = import("LinearColor") end) end
-    if not (V2 and LC) then return nil end
-
-    local P = { Canvas = canvas, V2 = V2, LC = LC }
-
-    function P.col(r, g, b, a)
-        local ok, c = pcall(LC, r, g, b, a or 1.0)
-        if ok and c then return c end
-        return {R=r, G=g, B=b, A=a or 1.0}
-    end
-    function P.mkBorder(color)
-        local w = nil
-        pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.Border", canvas) end)
-        if not (slua and slua.isValid and slua.isValid(w)) then return nil end
-        pcall(function()
-            w:SetBrushColor(color)
-            w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-        end)
-        return w
-    end
-    function P.mkText(txt, color, size, align)
-        local w = nil
-        pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.TextBlock", canvas) end)
-        if not (slua and slua.isValid and slua.isValid(w)) then return nil end
-        pcall(function()
-            w:SetText(txt)
-            w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-            w:SetColorAndOpacity(color)
-            if w.SetJustification then w:SetJustification(align or 1) end
-            local f = w.Font
-            if f then f.Size = size; w:SetFont(f) end
-        end)
-        return w
-    end
-    function P.mkSlot(widget, x, y, w, h, z)
-        local s = nil
-        pcall(function() s = canvas:AddChildToCanvas(widget) end)
-        if not s then return nil end
-        pcall(function()
-            s:SetAutoSize(false)
-            s:SetPosition(V2(x, y))
-            s:SetSize(V2(w, h))
-            s:SetZOrder(z)
-        end)
-        return s
-    end
-
-    _G.__PREMIUM_UI = P
-    _G.__PREMIUM_UI_OK = true
-    return P
-end
 
 local GLOBAL_BONE_LIST = {
     "head", "neck_01", "pelvis",
@@ -5613,424 +5529,321 @@ end
                     local currentHp, maxHp = 100, 100
                     local showFrameUI = _G.GTLMODConfig.Esp5 or _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     
-                    -- ════════════════════════════════════════════════════════════════
--- PREMIUM ENEMY BOX & HEALTH BAR (Custom Drawn)
--- ════════════════════════════════════════════════════════════════
-if showFrameUI then
-    pcall(function()
-        local hud = Cached_MyHUD
-        if not (Valid(hud) and hud.AddDebugText) then return end
-        if distM > 400 then return end
+                    if showFrameUI then
+                        pcall(function()
+                            if enemy.Health then currentHp = enemy.Health elseif type(enemy.GetHealth) == "function" then currentHp = enemy:GetHealth() end
+                            if enemy.HealthMax then maxHp = enemy.HealthMax elseif type(enemy.GetHealthMax) == "function" then maxHp = enemy:GetHealthMax() end
+                        end)
+                        if maxHp <= 0 then maxHp = 100 end
+                    end
+                    local hpRatio = currentHp / maxHp
 
-        -- Visibility check (Green if visible, Red if behind wall)
-        local isVisible = false
-        if pc and type(pc.LineOfSightTo) == "function" then
-            isVisible = pc:LineOfSightTo(enemy)
-        end
+                    if _G.GTLMODConfig.EspAntenna then
+                        pcall(function()
+                            local MyHUD = Cached_MyHUD
+                            if Valid(MyHUD) and distM <= 400 then
+                                local loopCount = 8  
+                                local zStep = 1000     
+                                local baseZ = 105     
+                                local topZ = baseZ + (loopCount * zStep)
+                                for i = 1, loopCount do
+                                    local zOffset = baseZ + (i * zStep)
+                                    MyHUD:AddDebugText("|", enemy, 0.06,
+                                        {X=0, Y=0, Z=zOffset}, {X=0, Y=0, Z=zOffset},
+                                        C_GREEN, true, false, true, nil, 1.2, true)
+                                end
+                                MyHUD:AddDebugText("I", enemy, 0.06,
+                                        {X=0, Y=0, Z=topZ + 60}, {X=0, Y=0, Z=topZ + 60},
+                                        C_GREEN, true, false, true, nil, 1.5, true)
+                            end
+                        end)
+                    end
 
-        local isKnock = (currentHp <= 0 or enemy.HealthStatus == 1)
-
-        -- Colors based on state
-        local boxColor = isKnock and {R=0, G=150, B=255, A=255} or (isVisible and {R=50, G=255, B=50, A=255} or {R=255, G=50, B=50, A=255})
-        
-        -- HP Bar Colors (Gradient: Green > 60%, Yellow > 30%, Red < 30%)
-        local hpColor = {R=50, G=255, B=50, A=255}
-        if isKnock then
-            hpColor = {R=0, G=150, B=255, A=255}
-        elseif hpRatio <= 0.3 then
-            hpColor = {R=255, G=50, B=50, A=255}
-        elseif hpRatio <= 0.6 then
-            hpColor = {R=255, G=255, B=0, A=255}
-        end
-
-        -- Box Dimensions
-        local headZ = 95
-        local footZ = -10
-        local halfW = 35
-        local cornerSize = 12
-
-        -- 1. Draw 4 Corner Brackets (L-Shapes)
-        -- Top Left
-        hud:AddDebugText("▬", enemy, 0.0, {X=-halfW, Y=0, Z=headZ}, {X=-halfW+cornerSize, Y=0, Z=headZ}, boxColor, true, false, true, nil, 0.4, true)
-        hud:AddDebugText("▮", enemy, 0.0, {X=-halfW, Y=0, Z=headZ}, {X=-halfW, Y=0, Z=headZ-cornerSize}, boxColor, true, false, true, nil, 0.4, true)
-        
-        -- Top Right
-        hud:AddDebugText("▬", enemy, 0.0, {X=halfW, Y=0, Z=headZ}, {X=halfW-cornerSize, Y=0, Z=headZ}, boxColor, true, false, true, nil, 0.4, true)
-        hud:AddDebugText("▮", enemy, 0.0, {X=halfW, Y=0, Z=headZ}, {X=halfW, Y=0, Z=headZ-cornerSize}, boxColor, true, false, true, nil, 0.4, true)
-
-        -- Bottom Left
-        hud:AddDebugText("▬", enemy, 0.0, {X=-halfW, Y=0, Z=footZ}, {X=-halfW+cornerSize, Y=0, Z=footZ}, boxColor, true, false, true, nil, 0.4, true)
-        hud:AddDebugText("▮", enemy, 0.0, {X=-halfW, Y=0, Z=footZ}, {X=-halfW, Y=0, Z=footZ+cornerSize}, boxColor, true, false, true, nil, 0.4, true)
-
-        -- Bottom Right
-        hud:AddDebugText("▬", enemy, 0.0, {X=halfW, Y=0, Z=footZ}, {X=halfW-cornerSize, Y=0, Z=footZ}, boxColor, true, false, true, nil, 0.4, true)
-        hud:AddDebugText("▮", enemy, 0.0, {X=halfW, Y=0, Z=footZ}, {X=halfW, Y=0, Z=footZ+cornerSize}, boxColor, true, false, true, nil, 0.4, true)
-
-        -- 2. Draw Health Bar (Above Head)
-        local barZ = headZ + 15
-        local barW = halfW * 2
-        local fillW = barW * hpRatio
-
-        -- Health Bar Background (Dark)
-        hud:AddDebugText("▬▬▬▬▬▬", enemy, 0.0, {X=-halfW, Y=0, Z=barZ}, {X=halfW, Y=0, Z=barZ}, {R=10, G=10, B=10, A=200}, true, false, true, nil, 0.8, true)
-        
-        -- Health Bar Fill (Dynamic Color)
-        if hpRatio > 0 then
-            hud:AddDebugText("▬▬▬▬▬▬", enemy, 0.0, {X=-halfW, Y=0, Z=barZ}, {X=-halfW + fillW, Y=0, Z=barZ}, hpColor, true, false, true, nil, 0.8, true)
-        end
-
-        -- 3. Distance Text (Below Feet)
-        hud:AddDebugText(string.format("%.0fm", distM), enemy, 0.0, {X=0, Y=0, Z=footZ - 15}, {X=0, Y=0, Z=footZ - 15}, {R=200, G=200, B=200, A=255}, true, false, true, nil, 0.7, true)
-    end)
-else
-    -- Hide native frame UI if not showing premium box
-    pcall(function()
-        if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
-        local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-        if Valid(uiComp) then
-            if markData.LastFrameUIState ~= "HIDDEN" then
-                if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                markData.LastFrameUIState = "HIDDEN"
-            end
-        end
-    end)
-end
+                    if _G.GTLMODConfig.Esp6 then
+                        pcall(function()
+                            local curTime = os.clock()
+                            if markData.LastEsp6Time == nil or (curTime - markData.LastEsp6Time) >= 0.05 then
+                                markData.LastEsp6Time = curTime
+                                
+                                local MyHUD = Cached_MyHUD
+                                if Valid(MyHUD) and Valid(eMesh) and aLoc then
+                                    if distM <= 250 then
+                                        if type(eMesh.GetSocketLocation) == "function" then
+                                            for _, bName in ipairs(GLOBAL_BONE_LIST) do
+                                                
+                                                if distM > 50 and (bName ~= "head" and bName ~= "pelvis" and bName ~= "neck_01") then
+                                                    -- Skip
+                                                else
+                                                    local wLoc = eMesh:GetSocketLocation(bName)
+                                                    if wLoc then
+                                                        local offset = {X = wLoc.X - aLoc.X, Y = wLoc.Y - aLoc.Y, Z = wLoc.Z - aLoc.Z}
+                                                        
+                                                        local mark = "▪"
+                                                        local fixedSize = 0.25 
+                                                        local color = C_CYAN
+                                                        
+                                                        if bName == "head" then 
+                                                            mark = "●"
+                                                            fixedSize = 0.45
+                                                            color = C_RED
+                                                        elseif bName == "pelvis" or bName == "neck_01" then 
+                                                            mark = "▪"
+                                                            fixedSize = 0.35
+                                                            color = C_YELLOW 
+                                                        end
+                                                        
+                                                        MyHUD:AddDebugText(mark, enemy, 0.06, offset, offset, color, true, false, true, nil, fixedSize, true)
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end)
+                    end
 
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
                     if _G.GTLMODConfig.Esp7 then
-    pcall(function()
-        -- === COUNT ENEMIES ===
-        local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
-        local myPos    = localPlayer:K2_GetActorLocation()
-        local maxDist  = 35000
-        local rCount, aCount = 0, 0
+                        pcall(function()
+                            local MyHUD = Cached_MyHUD
+                            if not Valid(MyHUD) then return end
 
-        for _, tPawn in pairs(allCharacters) do
-            if slua.isValid(tPawn) and tPawn ~= localPlayer then
-                local tTeamId = tPawn.TeamID or tPawn:GetTeamID() or 0
-                if tTeamId ~= myTeamId then
-                    local ePos = tPawn:K2_GetActorLocation()
-                    if ePos then
-                        local dx, dy, dz = ePos.X - myPos.X, ePos.Y - myPos.Y, ePos.Z - myPos.Z
-                        if math.sqrt(dx*dx + dy*dy + dz*dz) <= maxDist then
-                            local isAI = (tPawn.bIsAI == true or tPawn.IsAI == true)
-                            if not isAI then
-                                local pS = tPawn.PlayerState or (type(tPawn.GetPlayerState) == "function" and tPawn:GetPlayerState())
-                                if slua.isValid(pS) and (pS.bIsABot == true or pS.bIsBot == true) then isAI = true end
+                            local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
+                            local myPos = localPlayer:K2_GetActorLocation()
+                            local maxDist = 35000
+                            local realCount = 0
+                            local aiCount = 0
+
+                            for _, tPawn in pairs(allCharacters) do
+                                if slua.isValid(tPawn) and tPawn ~= localPlayer then
+                                    local targetTeamId = tPawn.TeamID or tPawn:GetTeamID() or 0
+                                    if targetTeamId ~= myTeamId then
+                                        local enemyPos = tPawn:K2_GetActorLocation()
+                                        if enemyPos then
+                                            local dx = enemyPos.X - myPos.X
+                                            local dy = enemyPos.Y - myPos.Y
+                                            local dz = enemyPos.Z - myPos.Z
+                                            local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                                            if dist <= maxDist then
+                                                local isAI = false
+                                                if tPawn.bIsAI == true or tPawn.IsAI == true then
+                                                    isAI = true
+                                                end
+                                                if not isAI then
+                                                    local pState = tPawn.PlayerState or (type(tPawn.GetPlayerState) == "function" and tPawn:GetPlayerState())
+                                                    if slua.isValid(pState) and (pState.bIsABot == true or pState.bIsBot == true) then
+                                                        isAI = true
+                                                    end
+                                                end
+                                                if isAI then
+                                                    aiCount = aiCount + 1
+                                                else
+                                                    realCount = realCount + 1
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
                             end
-                            if isAI then aCount = aCount + 1 else rCount = rCount + 1 end
+
+                            local totalEnemy = realCount + aiCount
+                            if totalEnemy > 0 then
+                                local text = string.format("ENEMY (P: %d | B: %d)", realCount, aiCount)
+                                MyHUD:AddDebugText(text, localPlayer, 1.2, {X=0, Y=0, Z=150}, {X=0, Y=0, Z=150}, {R=255, G=255, B=255, A=255}, true, false, true, nil, 1.0, true)
+                            else
+                                MyHUD:AddDebugText("(CLEAR ENEMY - @ZakPubgSkin)", localPlayer, 1.2, {X=0, Y=0, Z=150}, {X=0, Y=0, Z=150}, {R=0, G=255, B=0, A=255}, true, false, true, nil, 1.0, true)
+                            end
+                        end)
+                    end
+                    if showFrameUI then
+                        pcall(function()
+                            local SecurityCommonUtils = Cached_SecurityCommonUtils
+                            local show = true
+                            if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
+                                if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
+                            end
+                            if show and mLoc then
+                                if aLoc and SecurityCommonUtils and SecurityCommonUtils.IsVector then
+                                    if SecurityCommonUtils.IsVector(aLoc) and SecurityCommonUtils.IsVector(mLoc) then
+                                        if aLoc.Z >= 150000 or FVector.Dist2D(mLoc, aLoc) > 50000 then show = false end
+                                    end
+                                end
+                            end
+                            if show then
+                                if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then enemy:Replay_CreateEnemyFrameUI(true, true) end
+                                if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(true) end
+                                if enemy.Replay_UpdateEnemyFrameUI then enemy:Replay_UpdateEnemyFrameUI(hpRatio) end
+                                
+                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                if Valid(uiComp) then
+                                    if markData.LastFrameUIState ~= "VISIBLE" then
+                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
+                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
+                                        markData.LastFrameUIState = "VISIBLE"
+                                    end
+                                end
+                            end
+                        end)
+                    else
+                        pcall(function()
+                            if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
+                            local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                            if Valid(uiComp) then
+                                if markData.LastFrameUIState ~= "HIDDEN" then
+                                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                    markData.LastFrameUIState = "HIDDEN"
+                                end
+                            end
+                        end)
+                    end
+
+                    -- ESP HEALTH V1
+                    if _G.GTLMODConfig.EspVipPro then
+                        pcall(function()
+                            local hud = Cached_MyHUD
+                            if not (Valid(hud) and hud.AddDebugText) then return end
+                            if distM > 400 then return end
+
+                            local hp = enemy.Health or 100
+                            local maxHp = enemy.HealthMax or 100
+                            local isKnock = (hp <= 0 or enemy.HealthStatus == 1)
+                            local hpPercent = isKnock and 0 or (hp / maxHp)
+                            local pctValue = math.floor(hpPercent * 100 + 0.5)
+
+                            local pName = ""
+                            if _G.GTLMODConfig.EspName then
+                                pName = enemy.PlayerName or enemy.PlayerNamePublic or "Enemy"
+                            end
+
+                            -- Refresh visibility check every frame
+                            local bIsVisible = false
+                            if pc and type(pc.LineOfSightTo) == "function" then
+                                bIsVisible = pc:LineOfSightTo(enemy)
+                            end
+
+                            local textColor = {R=255, G=255, B=255, A=255}
+                            if isKnock then
+                                textColor = {R=0, G=0, B=255, A=255}      -- Blue
+                            else
+                                textColor = bIsVisible and C_GREEN or C_RED
+                            end
+
+                            local prefix = bIsVisible and "▶" or "▶"
+                            local label = ""
+                            if isKnock then
+                                label = (pName ~= "" and string.format("%s [♿]", pName) or "♿")
+                            else
+                                if pName ~= "" then
+                                    label = string.format("%s %s %.0f%%", pName, prefix, pctValue)
+                                else
+                                    label = string.format("%s %.0f%%", prefix, pctValue)
+                                end
+                            end
+
+                            hud:AddDebugText(label, enemy, 0.2, {X=0, Y=0, Z=120}, {X=0, Y=0, Z=120},
+                                             textColor, true, false, true, nil, 1.0, true)
+                        end)
+                    end
+
+                    -- ESP RANGE (Distance)
+                    if _G.GTLMODConfig.EspDistance then
+                        pcall(function()
+                            local hud = Cached_MyHUD
+                            if not (Valid(hud) and hud.AddDebugText) then return end
+                            if distM > 400 then return end
+
+                            local distMeters = math.floor(distM + 0.5)
+                            local rangeColor = {R=255, G=255, B=255, A=255} -- white
+
+                            hud:AddDebugText(string.format("%.0fm", distMeters), enemy, 0.3,
+                                             {X=15, Y=15, Z=-15}, {X=15, Y=15, Z=-15},
+                                             rangeColor, true, false, true, nil, 0.9, true)
+                        end)
+                    end
+
+                    -- ESP NAME
+                    if _G.GTLMODConfig.EspName and not _G.GTLMODConfig.EspVipPro then
+                        pcall(function()
+                            local hud = Cached_MyHUD
+                            if not (Valid(hud) and hud.AddDebugText) then return end
+                            if distM > 400 then return end
+
+                            local pName = enemy.PlayerName or enemy.PlayerNamePublic or "Enemy"
+                            if pName == "" then return end
+
+                            local isKnock = (enemy.Health or 100) <= 0 or enemy.HealthStatus == 1
+                            local bIsVisible = true
+                            pcall(function()
+                                if pc and type(pc.LineOfSightTo) == "function" then
+                                    bIsVisible = pc:LineOfSightTo(enemy)
+                                end
+                            end)
+
+                            local nameColor = {R=255, G=255, B=255, A=255}
+                            if isKnock then
+                                nameColor = {R=0, G=0, B=255, A=255}
+                            else
+                                nameColor = bIsVisible and C_GREEN or C_RED
+                            end
+
+                            hud:AddDebugText(pName, enemy, 0.2, {X=0, Y=0, Z=120}, {X=0, Y=0, Z=120},
+                                             nameColor, true, false, true, nil, 1.0, true)
+                        end)
+                    end
+
+                    if _G.GTLMODConfig.EspVip then
+                        if markData.hpMark == nil then markData.hpMark = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy) end
+                        if markData.distMark == nil then markData.distMark = SafeAddMark(9999, FVector(0,0,0), 0, "", 4, enemy) end
+                    else
+                        if markData.hpMark then SafeRemoveMark(markData.hpMark); markData.hpMark = nil end
+                        if markData.distMark then SafeRemoveMark(markData.distMark); markData.distMark = nil end
+                    end
+
+                    if _G.GTLMODConfig.Esp8 then
+                        if markData.hpMark8 == nil then markData.hpMark8 = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy) end
+                    else
+                        if markData.hpMark8 then SafeRemoveMark(markData.hpMark8); markData.hpMark8 = nil end
+                    end
+                    
+                    if _G.GTLMODConfig.EspRadar then
+                        if not markData.radarMark or markData.radarMark == 0 then 
+                            markData.radarMark = SafeAddMark(8888, FVector(0,0,0), 0, "", 4, enemy) 
+                        end
+                    else
+                        if markData.radarMark and markData.radarMark ~= 0 then
+                            SafeRemoveMark(markData.radarMark)
+                            markData.radarMark = nil
                         end
                     end
-                end
-            end
-        end
-
-                local P = _PremiumUI()
-        if not P then return end
-        local col, V2 = P.col, P.V2
-
-        -- Minimal Color Palette
-        local C_RED    = col(1.00, 0.25, 0.35, 1.0)
-        local C_GRN    = col(0.25, 1.00, 0.55, 1.0)
-        local C_WHITE  = col(1.00, 1.00, 1.00, 0.95)
-        local C_SHADOW = col(0.00, 0.00, 0.00, 0.60) -- Transparent shadow background
-
-        _G.__ESP7_UI = _G.__ESP7_UI or {}
-        local U = _G.__ESP7_UI
-
-        -- Compact Dimensions
-        U.W, U.H = 220, 36 
-        U.Half = U.W * 0.5
-
-        local needRebuild = not (slua.isValid(U.Base))
-        if not needRebuild and U.CanvasRef and not slua.isValid(U.CanvasRef) then
-            needRebuild = true
-        end
-
-        if needRebuild then
-            U.Base = nil
-            U.CanvasRef = P.Canvas
-
-            -- 1. Transparent Shadow Background (Not Invisible completely, just a soft background for text visibility)
-            U.Base = P.mkBorder(C_SHADOW)
-            U.BaseSlot = U.Base and P.mkSlot(U.Base, 0, 0, U.W, U.H, 45)
-
-            -- 2. Red Icon (Left)
-            U.RealIcon = P.mkText("◆", C_RED, 12)
-            U.RealIconSlot = U.RealIcon and P.mkSlot(U.RealIcon, 15, 0, 16, U.H, 53)
-
-            -- 3. Real Label
-            U.RealLabel = P.mkText("REAL 0", C_WHITE, 16, 1)
-            U.RealLabelSlot = U.RealLabel and P.mkSlot(U.RealLabel, 30, 0, 70, U.H, 52)
-
-            -- 4. Center Divider
-            U.Divider = P.mkBorder(col(1, 1, 1, 0.3))
-            U.DividerSlot = P.mkSlot(U.Divider, U.Half, 8, 1, U.H - 16, 47)
-
-            -- 5. Green Icon (Right)
-            U.BotIcon = P.mkText("◆", C_GRN, 12)
-            U.BotIconSlot = U.BotIcon and P.mkSlot(U.BotIcon, U.Half + 15, 0, 16, U.H, 53)
-
-            -- 6. Bot Label
-            U.BotLabel = P.mkText("BOT 0", C_WHITE, 16, 1)
-            U.BotLabelSlot = U.BotLabel and P.mkSlot(U.BotLabel, U.Half + 30, 0, 70, U.H, 52)
-
-            U.LastReal, U.LastBot = -1, -1
-            U.LastX, U.LastY = nil, nil
-            U.Visible = false
-            U.PulseClock = 0
-            U.LastTick = os.clock()
-        end
-
-        -- Update Text
-        if U.LastReal ~= rCount and slua.isValid(U.RealLabel) then
-            pcall(function() U.RealLabel:SetText(string.format("REAL %d", rCount)) end)
-            U.LastReal = rCount
-        end
-        if U.LastBot ~= aCount and slua.isValid(U.BotLabel) then
-            pcall(function() U.BotLabel:SetText(string.format("BOT %d", aCount)) end)
-            U.LastBot = aCount
-        end
-
-        -- Pulse Animation (Subtle)
-        local nowT = os.clock()
-        local dt = nowT - (U.LastTick or nowT); U.LastTick = nowT
-        U.PulseClock = (U.PulseClock or 0) + dt
-        local pulse = 0.7 + 0.3 * math.sin(U.PulseClock * 4.0)
-
-        -- Dynamic Icon Colors
-        if slua.isValid(U.RealIcon) then
-            pcall(function() U.RealIcon:SetColorAndOpacity(col(1.0, 0.25, 0.35, pulse)) end)
-        end
-        if slua.isValid(U.BotIcon) then
-            pcall(function() U.BotIcon:SetColorAndOpacity(col(0.25, 1.0, 0.55, pulse)) end)
-        end
-
-        -- Positioning (Top Center)
-        local vw = nil
-        pcall(function()
-            local WL = import("WidgetLayoutLibrary")
-            if WL and WL.GetViewportSize then
-                local v = WL.GetViewportSize(pc)
-                if v then vw = tonumber(v.X) end
-            end
-        end)
-        if not vw and pc then pcall(function() vw = tonumber(pc:GetViewportSize()) end) end
-        if not vw then vw = 1920 end
-
-        local scale = 1.0
-        pcall(function()
-            local WL = import("WidgetLayoutLibrary")
-            if WL and WL.GetViewportScale then
-                local s = WL.GetViewportScale(pc)
-                if s and s >= 0.01 and s <= 100 then scale = s end
-            end
-        end)
-
-        local cx = (vw * 0.5) / scale
-        local x = cx - U.W * 0.5
-        local y = 55.0 -- Screen top se thora neechay
-
-        if U.LastX ~= x or U.LastY ~= y then
-            local function sp(slot, px, py) if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(px, py)) end) end end
-            sp(U.BaseSlot, x, y)
-            sp(U.RealIconSlot, x + 15, y)
-            sp(U.RealLabelSlot, x + 30, y)
-            sp(U.DividerSlot, x + U.Half, y + 8)
-            sp(U.BotIconSlot, x + U.Half + 15, y)
-            sp(U.BotLabelSlot, x + U.Half + 30, y)
-            U.LastX, U.LastY = x, y
-        end
-
-        -- Show
-        if not U.Visible then
-            for _, f in ipairs({"Base", "RealIcon", "RealLabel", "Divider", "BotIcon", "BotLabel"}) do
-                if slua.isValid(U[f]) then
-                    pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-                end
-            end
-            U.Visible = true
-        end
-else
-    -- Esp7 OFF → hide counter
-    pcall(function()
-        local U = _G.__ESP7_UI
-        if not U then return end
-        for _, f in ipairs({"RedGlow","GreenGlow","Base","RedTop","RedBot","GreenTop","GreenBot",
-            "RedBorderTop","RedBorderBot","RedBorderLeft","GreenBorderTop","GreenBorderBot","GreenBorderRight",
-            "DividerGlow","Divider",
-            "RedCornerTL","RedCornerTLV","GreenCornerTR","GreenCornerTRV",
-            "RedCornerBL","RedCornerBLV","GreenCornerBR","GreenCornerBRV",
-            "RealLabel","BotLabel","RealIcon","BotIcon"}) do
-            if slua and slua.isValid and slua.isValid(U[f]) then
-                pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-            end
-        end
-        U.Visible = false
-    end)
-end
-
--- ════════════════════════════════════════════════════════════════
--- NATIVE ENEMY FRAME UI (health bar above enemies)
--- ════════════════════════════════════════════════════════════════
-if showFrameUI then
-    local hud = Cached_MyHUD
-    if Valid(hud) and hud.AddDebugText then
-        local label = string.format("[%.0fm] %s", distM, isVisible and "VIS" or "HIDDEN")
-        hud:AddDebugText(label, enemy)
-    end
-end
-
--- ════════════════════════════════════════════════════════════════
--- ESP HEALTH V1 (name + HP% via text)
--- ════════════════════════════════════════════════════════════════
-if _G.GTLMODConfig.EspVipPro then
-    pcall(function()
-        local hud = Cached_MyHUD
-        if not (Valid(hud) and hud.AddDebugText) then return end
-        if distM > 400 then return end
-       local hpColor = {R=50, G=255, B=50, A=255}
-        local hp = enemy.Health or 100
-        local maxHp = enemy.HealthMax or 100
-        local isKnock = (hp <= 0 or enemy.HealthStatus == 1)
-        local hpPercent = isKnock and 0 or (hp / maxHp)
-        local pctValue = math.floor(hpPercent * 100 + 0.5)
-
-        local pName = ""
-        if _G.GTLMODConfig.EspName then
-            pName = enemy.PlayerName or enemy.PlayerNamePublic or "Enemy"
-        end
-
-        local bIsVisible = false
-        if pc and type(pc.LineOfSightTo) == "function" then
-            bIsVisible = pc:LineOfSightTo(enemy)
-        end
-
-        local textColor = {R=255, G=255, B=255, A=255}
-        if isKnock then
-            textColor = {R=0, G=0, B=255, A=255}
-        else
-            textColor = bIsVisible and C_GREEN or C_RED
-        end
-
-        local prefix = bIsVisible and "▶" or "▶"
-        local label = ""
-        if isKnock then
-            label = (pName ~= "" and string.format("%s [♿]", pName) or "♿")
-        else
-            if pName ~= "" then
-                label = string.format("%s %s %.0f%%", pName, prefix, pctValue)
-            else
-                label = string.format("%s %.0f%%", prefix, pctValue)
-            end
-        end
-
-        hud:AddDebugText(label, enemy, 0.2, {X=0, Y=0, Z=120}, {X=0, Y=0, Z=120},
-                         textColor, true, false, true, nil, 1.0, true)
-    end)
-end
-
--- ESP RANGE (Distance)
-if _G.GTLMODConfig.EspDistance then
-    pcall(function()
-        local hud = Cached_MyHUD
-        if not (Valid(hud) and hud.AddDebugText) then return end
-        if distM > 400 then return end
-
-        local distMeters = math.floor(distM + 0.5)
-        local rangeColor = {R=255, G=255, B=255, A=255}
-
-        hud:AddDebugText(string.format("%.0fm", distMeters), enemy, 0.3,
-                         {X=15, Y=15, Z=-15}, {X=15, Y=15, Z=-15},
-                         rangeColor, true, false, true, nil, 0.9, true)
-    end)
-end
-
--- ESP NAME
-if _G.GTLMODConfig.EspName and not _G.GTLMODConfig.EspVipPro then
-    pcall(function()
-        local hud = Cached_MyHUD
-        if not (Valid(hud) and hud.AddDebugText) then return end
-        if distM > 400 then return end
-
-        local pName = enemy.PlayerName or enemy.PlayerNamePublic or "Enemy"
-        if pName == "" then return end
-
-        local isKnock = (enemy.Health or 100) <= 0 or enemy.HealthStatus == 1
-        local bIsVisible = true
-        pcall(function()
-            if pc and type(pc.LineOfSightTo) == "function" then
-                bIsVisible = pc:LineOfSightTo(enemy)
-            end
-        end)
-
-        local nameColor = {R=255, G=255, B=255, A=255}
-        if isKnock then
-            nameColor = {R=0, G=0, B=255, A=255}
-        else
-            nameColor = bIsVisible and C_GREEN or C_RED
-        end
-
-        hud:AddDebugText(pName, enemy, 0.2, {X=0, Y=0, Z=120}, {X=0, Y=0, Z=120},
-                         nameColor, true, false, true, nil, 1.0, true)
-    end)
-end
-
--- ════════════════════════════════════════════════════════════════
--- MARKS (Vip / Esp8 / Radar / Outline)
--- ════════════════════════════════════════════════════════════════
-if _G.GTLMODConfig.EspVip then
-    if markData.hpMark == nil then markData.hpMark = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy) end
-    if markData.distMark == nil then markData.distMark = SafeAddMark(9999, FVector(0,0,0), 0, "", 4, enemy) end
-else
-    if markData.hpMark then SafeRemoveMark(markData.hpMark); markData.hpMark = nil end
-    if markData.distMark then SafeRemoveMark(markData.distMark); markData.distMark = nil end
-end
-
-if _G.GTLMODConfig.Esp8 then
-    if markData.hpMark8 == nil then markData.hpMark8 = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy) end
-else
-    if markData.hpMark8 then SafeRemoveMark(markData.hpMark8); markData.hpMark8 = nil end
-end
-
-if _G.GTLMODConfig.EspRadar then
-    if not markData.radarMark or markData.radarMark == 0 then
-        markData.radarMark = SafeAddMark(8888, FVector(0,0,0), 0, "", 4, enemy)
-    end
-else
-    if markData.radarMark and markData.radarMark ~= 0 then
-        SafeRemoveMark(markData.radarMark)
-        markData.radarMark = nil
-    end
-end
-
-if _G.GTLMODConfig.EspOutline then
-    pcall(function()
-        local outlineHash = tostring(_G.GTLMODConfig.OutlineThickness)
-        if markData.OutlineState ~= outlineHash then
-            local PPM = Cached_PPM
-            local avatarComp = (type(enemy.getAvatarComponent2) == "function") and enemy:getAvatarComponent2() or nil
-            if Valid(avatarComp) and Valid(PPM) then
-                PPM.OutlineThickness = _G.GTLMODConfig.OutlineThickness
-                if PPM.OutlineColor then PPM.OutlineColor = {r = 1, g = 0, b = 0, a = 1} end
-                PPM:EnableAvatarOutline(avatarComp, true)
-                markData.OutlineState = outlineHash
-            end
-        end
-    end)
-else
-    pcall(function()
-        if markData.OutlineState ~= "OFF" then
-            local PPM = Cached_PPM
-            local avatarComp = (type(enemy.getAvatarComponent2) == "function") and enemy:getAvatarComponent2() or nil
-            if Valid(avatarComp) and Valid(PPM) then PPM:EnableAvatarOutline(avatarComp, false) end
-            markData.OutlineState = "OFF"
-        end
-    end)
-end
+                    
+                    if _G.GTLMODConfig.EspOutline then
+                        pcall(function()
+                            local outlineHash = tostring(_G.GTLMODConfig.OutlineThickness)
+                            if markData.OutlineState ~= outlineHash then
+                                local PPM = Cached_PPM
+                                local avatarComp = (type(enemy.getAvatarComponent2) == "function") and enemy:getAvatarComponent2() or nil
+                                if Valid(avatarComp) and Valid(PPM) then
+                                    PPM.OutlineThickness = _G.GTLMODConfig.OutlineThickness
+                                    if PPM.OutlineColor then PPM.OutlineColor = {r = 1, g = 0, b = 0, a = 1} end
+                                    PPM:EnableAvatarOutline(avatarComp, true)
+                                    markData.OutlineState = outlineHash
+                                end
+                            end
+                        end)
+                    else
+                        pcall(function()
+                            if markData.OutlineState ~= "OFF" then
+                                local PPM = Cached_PPM
+                                local avatarComp = (type(enemy.getAvatarComponent2) == "function") and enemy:getAvatarComponent2() or nil
+                                if Valid(avatarComp) and Valid(PPM) then PPM:EnableAvatarOutline(avatarComp, false) end
+                                markData.OutlineState = "OFF"
+                            end
+                        end)
+                    end
 
                 else
                     if not markData.IsCleanedUp then
@@ -6072,8 +5885,8 @@ end
             end
         end
 
-        -- ESP TYPE 7 old text render — DISABLED (upgraded counter is inside per-enemy loop)
-        if false then
+        -- ESP TYPE 7: ENEMY COUNTER
+        if _G.GTLMODConfig.Esp7 then
             pcall(function()
                 local MyHUD = Cached_MyHUD
                 if Valid(MyHUD) then
@@ -6101,12 +5914,6 @@ local function FastTick()
     end
 
     if myToken ~= _G.GTLMODState.LoopToken then return end
-    
-    -- ✅ License UI animation tick (pulse/scan kaam karega)
-    if _G.__MASTER_LOGIN_UI and _G.__MASTER_LOGIN_UI.Tick then
-        pcall(_G.__MASTER_LOGIN_UI.Tick, 0.4)
-    end
-    
     pcall(MainLoop) 
     local okTicker, ticker = pcall(require, "common.time_ticker") 
     if okTicker and ticker and ticker.AddTimerOnce then 
@@ -6209,10 +6016,7 @@ end
 local function InitAllModSystems()
     if isExpired then return end
     if not BRLicenseActive() then return end
-     _G.TDFTDeKillCounts = {}
-    _G.NeedCheckDeadBoxTimer = 0
-    _G.CachedActorArray = nil
-    
+
     pcall(function()
         if _G.InitializeAutoHeadHooks then _G.InitializeAutoHeadHooks() end
     end)
