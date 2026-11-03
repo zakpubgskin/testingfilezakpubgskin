@@ -3921,7 +3921,7 @@ end
 -- ==========================================
 -- IPAD VIEW / FOV CONTROLLER (FIXED)
 -- ==========================================
-local function ApplyIpadViewFOV(localPlayer, pc)
+local function ApplyIpadViewFOV(local pc)
     if not Valid(localPlayer) or not Valid(pc) then return end
 
     -- Safe config access
@@ -4317,7 +4317,7 @@ local function ApplyColorBodyV2(enemy, pc, markData)
                 local traceHit = false
                 pcall(function()
                     traceHit = KismetSystemLibrary.LineTraceSingle(
-                        localPlayer,
+                        localplayer,
                         camLoc,
                         headPos,
                         UEnums.ETraceTypeQuery.TraceTypeQuery1,
@@ -4742,7 +4742,7 @@ ignoreActors:Add(target)
                         local traceHit = false
                         pcall(function()
                             traceHit = KismetSystemLibrary.LineTraceSingle(
-                                Player,           -- WorldContext
+                                player,           -- WorldContext
                                 camLoc,                -- Start
                                 headPos,               -- End
                                 UEnums.ETraceTypeQuery.TraceTypeQuery1,  -- Visibility channel
@@ -5123,7 +5123,7 @@ local function MainLoop()
                 local traceHit = false
                 pcall(function()
                     traceHit = KismetSystemLibrary.LineTraceSingle(
-                        Player,
+                        localPlayer,
                         camLoc,
                         headPos,
                         UEnums.ETraceTypeQuery.TraceTypeQuery1,
