@@ -5718,33 +5718,22 @@ end
             end
         end
 
-        local P = _PremiumUI()
+                local P = _PremiumUI()
         if not P then return end
         local col, V2 = P.col, P.V2
 
-        local C_RED    = col(1.00, 0.20, 0.35, 1.0)
-        local C_RED_G  = col(1.00, 0.20, 0.35, 0.35)
-        local C_RED_BT = col(0.30, 0.03, 0.08, 0.95)
-        local C_RED_BB = col(0.10, 0.01, 0.03, 0.95)
-        local C_GRN    = col(0.20, 1.00, 0.55, 1.0)
-        local C_GRN_G  = col(0.20, 1.00, 0.55, 0.35)
-        local C_GRN_BT = col(0.03, 0.25, 0.12, 0.95)
-        local C_GRN_BB = col(0.01, 0.10, 0.05, 0.95)
-        local C_BASE   = col(0.02, 0.02, 0.04, 0.92)
-        local C_WHITE  = col(1, 1, 1, 1)
-        local C_GREY   = col(0.55, 0.55, 0.60, 1)
-        local C_GOLD   = col(1.00, 0.84, 0.30, 1.0)
+        -- Minimal Color Palette
+        local C_RED    = col(1.00, 0.25, 0.35, 1.0)
+        local C_GRN    = col(0.25, 1.00, 0.55, 1.0)
+        local C_WHITE  = col(1.00, 1.00, 1.00, 0.95)
+        local C_SHADOW = col(0.00, 0.00, 0.00, 0.60) -- Transparent shadow background
 
-                _G.__ESP7_UI = _G.__ESP7_UI or {}
+        _G.__ESP7_UI = _G.__ESP7_UI or {}
         local U = _G.__ESP7_UI
 
-        -- ══════════════════════════════════════════════════════
-        -- PREMIUM COUNTER DIMENSIONS (bigger + cleaner)
-        -- ══════════════════════════════════════════════════════
-        U.W, U.H = 360, 64           -- wider, taller = more premium
+        -- Compact Dimensions
+        U.W, U.H = 220, 36 
         U.Half = U.W * 0.5
-        U.Pad  = 3                    -- thicker inner padding
-        U.Corner = 8                  -- gold corner length
 
         local needRebuild = not (slua.isValid(U.Base))
         if not needRebuild and U.CanvasRef and not slua.isValid(U.CanvasRef) then
@@ -5755,68 +5744,29 @@ end
             U.Base = nil
             U.CanvasRef = P.Canvas
 
-            -- ── Background panel (dark obsidian with gradient) ──
-            U.Base = P.mkBorder(C_BASE)
+            -- 1. Transparent Shadow Background (Not Invisible completely, just a soft background for text visibility)
+            U.Base = P.mkBorder(C_SHADOW)
             U.BaseSlot = U.Base and P.mkSlot(U.Base, 0, 0, U.W, U.H, 45)
 
-            -- ── Red side gradient (top/bottom strips) ──
-            U.RedTop = P.mkBorder(C_RED_BT)
-            U.RedTopSlot = U.RedTop and P.mkSlot(U.RedTop, U.Pad, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
-            U.RedBot = P.mkBorder(C_RED_BB)
-            U.RedBotSlot = U.RedBot and P.mkSlot(U.RedBot, U.Pad, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
+            -- 2. Red Icon (Left)
+            U.RealIcon = P.mkText("◆", C_RED, 12)
+            U.RealIconSlot = U.RealIcon and P.mkSlot(U.RealIcon, 15, 0, 16, U.H, 53)
 
-            -- ── Green side gradient (top/bottom strips) ──
-            U.GreenTop = P.mkBorder(C_GRN_BT)
-            U.GreenTopSlot = U.GreenTop and P.mkSlot(U.GreenTop, U.Half + 1, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
-            U.GreenBot = P.mkBorder(C_GRN_BB)
-            U.GreenBotSlot = U.GreenBot and P.mkSlot(U.GreenBot, U.Half + 1, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
+            -- 3. Real Label
+            U.RealLabel = P.mkText("REAL 0", C_WHITE, 16, 1)
+            U.RealLabelSlot = U.RealLabel and P.mkSlot(U.RealLabel, 30, 0, 70, U.H, 52)
 
-            -- ── Neon borders (red side) ──
-            U.RedBorderTop  = P.mkBorder(C_RED)
-            U.RedBorderTopSlot  = P.mkSlot(U.RedBorderTop,  U.Pad, U.Pad, U.Half - U.Pad - 1, 2, 47)
-            U.RedBorderBot  = P.mkBorder(C_RED)
-            U.RedBorderBotSlot  = P.mkSlot(U.RedBorderBot,  U.Pad, U.H - U.Pad - 2, U.Half - U.Pad - 1, 2, 47)
-            U.RedBorderLeft = P.mkBorder(C_RED)
-            U.RedBorderLeftSlot = P.mkSlot(U.RedBorderLeft, U.Pad, U.Pad, 2, U.H - U.Pad * 2, 47)
+            -- 4. Center Divider
+            U.Divider = P.mkBorder(col(1, 1, 1, 0.3))
+            U.DividerSlot = P.mkSlot(U.Divider, U.Half, 8, 1, U.H - 16, 47)
 
-            -- ── Neon borders (green side) ──
-            U.GreenBorderTop   = P.mkBorder(C_GRN)
-            U.GreenBorderTopSlot   = P.mkSlot(U.GreenBorderTop,   U.Half + 1, U.Pad, U.Half - U.Pad - 1, 2, 47)
-            U.GreenBorderBot   = P.mkBorder(C_GRN)
-            U.GreenBorderBotSlot   = P.mkSlot(U.GreenBorderBot,   U.Half + 1, U.H - U.Pad - 2, U.Half - U.Pad - 1, 2, 47)
-            U.GreenBorderRight = P.mkBorder(C_GRN)
-            U.GreenBorderRightSlot = P.mkSlot(U.GreenBorderRight, U.W - U.Pad - 2, U.Pad, 2, U.H - U.Pad * 2, 47)
+            -- 5. Green Icon (Right)
+            U.BotIcon = P.mkText("◆", C_GRN, 12)
+            U.BotIconSlot = U.BotIcon and P.mkSlot(U.BotIcon, U.Half + 15, 0, 16, U.H, 53)
 
-            -- ── Center divider (glow + solid) ──
-            U.DividerGlow = P.mkBorder(col(1, 1, 1, 0.35))
-            U.DividerGlowSlot = P.mkSlot(U.DividerGlow, U.Half - 3, 6, 6, U.H - 12, 48)
-            U.Divider     = P.mkBorder(col(0.85, 0.85, 0.95, 0.95))
-            U.DividerSlot = P.mkSlot(U.Divider, U.Half - 1, 6, 2, U.H - 12, 49)
-
-            -- ── Gold corner brackets (L-shapes, all 4 corners) ──
-            local A = U.Corner
-            U.RedCornerTL    = P.mkBorder(C_GOLD); U.RedCornerTLSlot    = P.mkSlot(U.RedCornerTL,    U.Pad, U.Pad, A, 3, 50)
-            U.RedCornerTLV   = P.mkBorder(C_GOLD); U.RedCornerTLVSlot   = P.mkSlot(U.RedCornerTLV,   U.Pad, U.Pad, 3, A, 50)
-            U.GreenCornerTR  = P.mkBorder(C_GOLD); U.GreenCornerTRSlot  = P.mkSlot(U.GreenCornerTR,  U.W - U.Pad - A, U.Pad, A, 3, 50)
-            U.GreenCornerTRV = P.mkBorder(C_GOLD); U.GreenCornerTRVSlot = P.mkSlot(U.GreenCornerTRV, U.W - U.Pad - 3, U.Pad, 3, A, 50)
-            U.RedCornerBL    = P.mkBorder(C_GOLD); U.RedCornerBLSlot    = P.mkSlot(U.RedCornerBL,    U.Pad, U.H - U.Pad - 3, A, 3, 50)
-            U.RedCornerBLV   = P.mkBorder(C_GOLD); U.RedCornerBLVSlot   = P.mkSlot(U.RedCornerBLV,   U.Pad, U.H - U.Pad - A, 3, A, 50)
-            U.GreenCornerBR  = P.mkBorder(C_GOLD); U.GreenCornerBRSlot  = P.mkSlot(U.GreenCornerBR,  U.W - U.Pad - A, U.H - U.Pad - 3, A, 3, 50)
-            U.GreenCornerBRV = P.mkBorder(C_GOLD); U.GreenCornerBRVSlot = P.mkSlot(U.GreenCornerBRV, U.W - U.Pad - 3, U.H - U.Pad - A, 3, A, 50)
-
-            -- ── Icons (LEFT of each side, vertically centered) ──
-            U.RealIcon = P.mkText("◆", C_RED, 16)
-            U.RealIconSlot = U.RealIcon and P.mkSlot(U.RealIcon, U.Pad + 10, 0, 24, U.H, 53)
-            U.BotIcon  = P.mkText("◆", C_GRN, 16)
-            U.BotIconSlot  = U.BotIcon  and P.mkSlot(U.BotIcon,  U.Half + 10, 0, 24, U.H, 53)
-
-            -- ── Labels (RIGHT of icons, properly centered) ──
-            U.RealLabel = P.mkText("REAL 0", C_WHITE, 22, 1)
-            U.RealLabelSlot = U.RealLabel and P.mkSlot(U.RealLabel,
-                U.Pad + 40, 0, U.Half - U.Pad - 46, U.H, 52)
-            U.BotLabel  = P.mkText("BOT 0",  C_WHITE, 22, 1)
-            U.BotLabelSlot  = U.BotLabel  and P.mkSlot(U.BotLabel,
-                U.Half + 40, 0, U.Half - U.Pad - 46, U.H, 52)
+            -- 6. Bot Label
+            U.BotLabel = P.mkText("BOT 0", C_WHITE, 16, 1)
+            U.BotLabelSlot = U.BotLabel and P.mkSlot(U.BotLabel, U.Half + 30, 0, 70, U.H, 52)
 
             U.LastReal, U.LastBot = -1, -1
             U.LastX, U.LastY = nil, nil
@@ -5825,7 +5775,7 @@ end
             U.LastTick = os.clock()
         end
 
-        -- ── Update labels (text change only) ──
+        -- Update Text
         if U.LastReal ~= rCount and slua.isValid(U.RealLabel) then
             pcall(function() U.RealLabel:SetText(string.format("REAL %d", rCount)) end)
             U.LastReal = rCount
@@ -5835,45 +5785,21 @@ end
             U.LastBot = aCount
         end
 
-        -- ── Pulse animation ──
+        -- Pulse Animation (Subtle)
         local nowT = os.clock()
         local dt = nowT - (U.LastTick or nowT); U.LastTick = nowT
         U.PulseClock = (U.PulseClock or 0) + dt
-        local pulse = 0.5 + 0.5 * math.sin(U.PulseClock * 3.0)
+        local pulse = 0.7 + 0.3 * math.sin(U.PulseClock * 4.0)
 
-        -- ── Label colors (bright when active, dim when empty) ──
-        if slua.isValid(U.RealLabel) then
-            pcall(function() U.RealLabel:SetColorAndOpacity(rCount > 0 and C_WHITE or C_GREY) end)
-        end
-        if slua.isValid(U.BotLabel) then
-            pcall(function() U.BotLabel:SetColorAndOpacity(aCount > 0 and C_WHITE or C_GREY) end)
-        end
-
-        -- ── Neon pulse borders ──
-        if slua.isValid(U.RedBorderTop) then
-            local a = (rCount > 0) and (0.65 + pulse * 0.35) or 0.20
-            pcall(function() U.RedBorderTop:SetBrushColor(col(1.00, 0.20, 0.35, a)) end)
-            if slua.isValid(U.RedBorderBot)  then pcall(function() U.RedBorderBot:SetBrushColor(col(1.00, 0.20, 0.35, a)) end) end
-            if slua.isValid(U.RedBorderLeft) then pcall(function() U.RedBorderLeft:SetBrushColor(col(1.00, 0.20, 0.35, a)) end) end
-        end
-        if slua.isValid(U.GreenBorderTop) then
-            local a = (aCount > 0) and (0.65 + pulse * 0.35) or 0.20
-            pcall(function() U.GreenBorderTop:SetBrushColor(col(0.20, 1.00, 0.55, a)) end)
-            if slua.isValid(U.GreenBorderBot)   then pcall(function() U.GreenBorderBot:SetBrushColor(col(0.20, 1.00, 0.55, a)) end) end
-            if slua.isValid(U.GreenBorderRight) then pcall(function() U.GreenBorderRight:SetBrushColor(col(0.20, 1.00, 0.55, a)) end) end
-        end
-
-        -- ── Icon pulse ──
+        -- Dynamic Icon Colors
         if slua.isValid(U.RealIcon) then
-            local a = (rCount > 0) and (0.7 + pulse * 0.3) or 0.25
-            pcall(function() U.RealIcon:SetColorAndOpacity(col(1.00, 0.20, 0.35, a)) end)
+            pcall(function() U.RealIcon:SetColorAndOpacity(col(1.0, 0.25, 0.35, pulse)) end)
         end
         if slua.isValid(U.BotIcon) then
-            local a = (aCount > 0) and (0.7 + pulse * 0.3) or 0.25
-            pcall(function() U.BotIcon:SetColorAndOpacity(col(0.20, 1.00, 0.55, a)) end)
+            pcall(function() U.BotIcon:SetColorAndOpacity(col(0.25, 1.0, 0.55, pulse)) end)
         end
 
-        -- ── Position (top-center) ──
+        -- Positioning (Top Center)
         local vw = nil
         pcall(function()
             local WL = import("WidgetLayoutLibrary")
@@ -5896,53 +5822,28 @@ end
 
         local cx = (vw * 0.5) / scale
         local x = cx - U.W * 0.5
-        local y = 42.0
+        local y = 55.0 -- Screen top se thora neechay
 
         if U.LastX ~= x or U.LastY ~= y then
             local function sp(slot, px, py) if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(px, py)) end) end end
             sp(U.BaseSlot, x, y)
-            sp(U.RedTopSlot, x + U.Pad, y + U.Pad)
-            sp(U.RedBotSlot, x + U.Pad, y + U.H * 0.55)
-            sp(U.GreenTopSlot, x + U.Half + 1, y + U.Pad)
-            sp(U.GreenBotSlot, x + U.Half + 1, y + U.H * 0.55)
-            sp(U.RedBorderTopSlot, x + U.Pad, y + U.Pad)
-            sp(U.RedBorderBotSlot, x + U.Pad, y + U.H - U.Pad - 2)
-            sp(U.RedBorderLeftSlot, x + U.Pad, y + U.Pad)
-            sp(U.GreenBorderTopSlot, x + U.Half + 1, y + U.Pad)
-            sp(U.GreenBorderBotSlot, x + U.Half + 1, y + U.H - U.Pad - 2)
-            sp(U.GreenBorderRightSlot, x + U.W - U.Pad - 2, y + U.Pad)
-            sp(U.DividerGlowSlot, x + U.Half - 3, y + 6)
-            sp(U.DividerSlot, x + U.Half - 1, y + 6)
-            sp(U.RedCornerTLSlot, x + U.Pad, y + U.Pad)
-            sp(U.RedCornerTLVSlot, x + U.Pad, y + U.Pad)
-            sp(U.GreenCornerTRSlot, x + U.W - U.Pad - U.Corner, y + U.Pad)
-            sp(U.GreenCornerTRVSlot, x + U.W - U.Pad - 3, y + U.Pad)
-            sp(U.RedCornerBLSlot, x + U.Pad, y + U.H - U.Pad - 3)
-            sp(U.RedCornerBLVSlot, x + U.Pad, y + U.H - U.Pad - U.Corner)
-            sp(U.GreenCornerBRSlot, x + U.W - U.Pad - U.Corner, y + U.H - U.Pad - 3)
-            sp(U.GreenCornerBRVSlot, x + U.W - U.Pad - 3, y + U.H - U.Pad - U.Corner)
-            sp(U.RealIconSlot,  x + U.Pad + 10, y)
-            sp(U.BotIconSlot,   x + U.Half + 10, y)
-            sp(U.RealLabelSlot, x + U.Pad + 40, y)
-            sp(U.BotLabelSlot,  x + U.Half + 40, y)
+            sp(U.RealIconSlot, x + 15, y)
+            sp(U.RealLabelSlot, x + 30, y)
+            sp(U.DividerSlot, x + U.Half, y + 8)
+            sp(U.BotIconSlot, x + U.Half + 15, y)
+            sp(U.BotLabelSlot, x + U.Half + 30, y)
             U.LastX, U.LastY = x, y
         end
 
-        -- ── Show ──
-                if not U.Visible then
-            for _, f in ipairs({"Base","RedTop","RedBot","GreenTop","GreenBot",
-                "RedBorderTop","RedBorderBot","RedBorderLeft","GreenBorderTop","GreenBorderBot","GreenBorderRight",
-                "DividerGlow","Divider",
-                "RedCornerTL","RedCornerTLV","GreenCornerTR","GreenCornerTRV",
-                "RedCornerBL","RedCornerBLV","GreenCornerBR","GreenCornerBRV",
-                "RealLabel","BotLabel","RealIcon","BotIcon"}) do
+        -- Show
+        if not U.Visible then
+            for _, f in ipairs({"Base", "RealIcon", "RealLabel", "Divider", "BotIcon", "BotLabel"}) do
                 if slua.isValid(U[f]) then
                     pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
                 end
             end
             U.Visible = true
         end
-    end)
 else
     -- Esp7 OFF → hide counter
     pcall(function()
