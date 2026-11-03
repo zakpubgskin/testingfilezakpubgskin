@@ -4094,7 +4094,7 @@ end
 -- ========================================== 
 local function GetAllSkeletalMeshes(enemy, markData)
     local curTime = os.clock()
-    if markData and markData.CachedMeshes and markData.CachedMeshTime and (curTime - markData.CachedMeshTime) < 3.0 then
+    if markData and markData.CachedMeshes and markData.CachedMeshTime and (curTime - markData.CachedMeshTime) < 0.5 then
         local validMeshes = {}
         for _, cachedMesh in ipairs(markData.CachedMeshes) do
             if Valid(cachedMesh) then table.insert(validMeshes, cachedMesh) end
@@ -4134,10 +4134,51 @@ local function Undowallhackng(enemy, markData)
     pcall(function()
         if markData.WallhackApplied then
             local meshes = GetAllSkeletalMeshes(enemy, markData)
+            local seen = {}
+            for _, m in ipairs(meshes) do seen[m] = true end
+            local function addMesh(m)
+                if Valid(m) and not seen[m] then
+                    seen[m] = true
+                    table.insert(meshes, m)
+                end
+            end
+
+            local weapon = nil
+            pcall(function() weapon = enemy:GetCurrentWeapon() end)
+            if Valid(weapon) and Valid(weapon.Mesh) then addMesh(weapon.Mesh) end
+
+            local avatar = nil
+            pcall(function()
+                avatar = enemy.CharacterAvatarComp2_BP
+                if not avatar and enemy.getAvatarComponent2 then avatar = enemy:getAvatarComponent2() end
+            end)
+            if Valid(avatar) and avatar.GetMeshCompBySlot then
+                for slot = 0, 7 do
+                    pcall(function() addMesh(avatar:GetMeshCompBySlot(slot)) end)
+                end
+            end
+
+            for _, className in ipairs({"SkeletalMeshComponent","StaticMeshComponent"}) do
+                local ok, cls = pcall(import, className)
+                if ok and cls then
+                    pcall(function()
+                        if type(enemy.GetComponentsByClass) ~= "function" then return end
+                        local comps = enemy:GetComponentsByClass(cls)
+                        if comps then
+                            for i = 0, comps:Num() - 1 do addMesh(comps:Get(i)) end
+                        end
+                    end)
+                end
+            end
+
             for _, mesh in ipairs(meshes) do
                 if Valid(mesh) then
-                    pcall(function() if type(mesh.SetRenderCustomDepth) == "function" then mesh:SetRenderCustomDepth(false) end end)
-                    for i = 0, 10 do 
+                    pcall(function()
+                        if type(mesh.SetRenderCustomDepth) == "function" then
+                            mesh:SetRenderCustomDepth(false)
+                        end
+                    end)
+                    for i = 0, 10 do
                         local matInterface = mesh:GetMaterial(i)
                         if Valid(matInterface) then
                             local baseMat = matInterface:GetBaseMaterial()
@@ -4154,30 +4195,66 @@ end
 local function Applywallhackng(enemy, markData)
     pcall(function()
         local meshes = GetAllSkeletalMeshes(enemy, markData)
+        local seen = {}
+        for _, m in ipairs(meshes) do seen[m] = true end
+        local function addMesh(m)
+            if Valid(m) and not seen[m] then
+                seen[m] = true
+                table.insert(meshes, m)
+            end
+        end
+
+        local weapon = nil
+        pcall(function() weapon = enemy:GetCurrentWeapon() end)
+        if Valid(weapon) and Valid(weapon.Mesh) then addMesh(weapon.Mesh) end
+
+        local avatar = nil
+        pcall(function()
+            avatar = enemy.CharacterAvatarComp2_BP
+            if not avatar and enemy.getAvatarComponent2 then avatar = enemy:getAvatarComponent2() end
+        end)
+        if Valid(avatar) and avatar.GetMeshCompBySlot then
+            for slot = 0, 7 do
+                pcall(function() addMesh(avatar:GetMeshCompBySlot(slot)) end)
+            end
+        end
+
+        for _, className in ipairs({"SkeletalMeshComponent","StaticMeshComponent"}) do
+            local ok, cls = pcall(import, className)
+            if ok and cls then
+                pcall(function()
+                    if type(enemy.GetComponentsByClass) ~= "function" then return end
+                    local comps = enemy:GetComponentsByClass(cls)
+                    if comps then
+                        for i = 0, comps:Num() - 1 do addMesh(comps:Get(i)) end
+                    end
+                end)
+            end
+        end
+
         for _, mesh in ipairs(meshes) do
-            if Valid(mesh) then 
+            if Valid(mesh) then
                 pcall(function()
                     if type(mesh.SetRenderCustomDepth) == "function" then
                         mesh:SetRenderCustomDepth(true)
                     end
                     if type(mesh.SetCustomDepthStencilValue) == "function" then
-                        mesh:SetCustomDepthStencilValue(252) 
+                        mesh:SetCustomDepthStencilValue(252)
                     end
                 end)
-                for i = 0, 10 do 
+                for i = 0, 10 do
                     local matInterface = mesh:GetMaterial(i)
                     if not Valid(matInterface) then break end
                     local baseMat = matInterface:GetBaseMaterial()
                     if Valid(baseMat) then
                         baseMat.bDisableDepthTest = true
-                        baseMat.BlendMode = 2 
+                        baseMat.BlendMode = 2
                     end
                 end
             end
         end
     end)
 end
-
 -- ========================================== 
 -- WALLHACK WITH COLOR
 -- ==========================================
@@ -4782,45 +4859,71 @@ local function MainLoop()
     end
   local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
-        -- KÃ­ch hoáº¡t Console Command náº¿u chÆ°a báº­t (Chá» gá»i 1 láº§n)
-        if not _G.ConsoleNewWallReady then
-            local KismetSystemLibrary = import("KismetSystemLibrary")
-            local world = slua.getWorld()
+        local KismetSystemLibrary = import("KismetSystemLibrary")
+        local world = slua.getWorld()
+        if world ~= _G.ConsoleNewWallWorld then
             if KismetSystemLibrary and world then
                 KismetSystemLibrary.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
                 KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CustomDepth 3")
                 KismetSystemLibrary.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
                 KismetSystemLibrary.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
-                _G.ConsoleNewWallReady = true
+                _G.ConsoleNewWallWorld = world
             end
         end
 
-        -- Láº¥y toÃ n bá» Mesh cá»§a káº» Äá»ch
         local meshes = GetAllSkeletalMeshes(enemy, markData)
-        
-        -- ThÃªm lÆ°á»i cá»§a vÅ© khÃ­ Äang cáº§m trÃªn tay
+        local seen = {}
+        for _, m in ipairs(meshes) do seen[m] = true end
+        local function addMesh(m)
+            if slua.isValid(m) and not seen[m] then
+                seen[m] = true
+                table.insert(meshes, m)
+            end
+        end
+
         local weapon = nil
         pcall(function() weapon = enemy:GetCurrentWeapon() end)
-        if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
-            table.insert(meshes, weapon.Mesh)
+        if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then addMesh(weapon.Mesh) end
+
+        local avatar = nil
+        pcall(function()
+            avatar = enemy.CharacterAvatarComp2_BP
+            if not avatar and enemy.getAvatarComponent2 then avatar = enemy:getAvatarComponent2() end
+        end)
+        if slua.isValid(avatar) and avatar.GetMeshCompBySlot then
+            for slot = 0, 7 do
+                pcall(function() addMesh(avatar:GetMeshCompBySlot(slot)) end)
+            end
+        end
+
+        for _, className in ipairs({"SkeletalMeshComponent","StaticMeshComponent"}) do
+            local ok, cls = pcall(import, className)
+            if ok and cls then
+                pcall(function()
+                    if type(enemy.GetComponentsByClass) ~= "function" then return end
+                    local comps = enemy:GetComponentsByClass(cls)
+                    if comps then
+                        for i = 0, comps:Num() - 1 do addMesh(comps:Get(i)) end
+                    end
+                end)
+            end
         end
 
         local isBot = markData.AK_IS_BOT or false
         local currentMeshCount = #meshes
-        
-        -- [Tá»I Æ¯U FPS TUYá»T Äá»I] - CHáº¾ Äá» NGá»¦ ÄÃNG (CACHE)
-        -- Táº¡o mÃ£ bÄm nháº­n diá»n: Náº¿u sá» lÆ°á»£ng quáº§n Ã¡o/sÃºng cá»§a Äá»ch khÃ´ng Äá»i, bá» qua vÃ²ng láº·p C++ cá»±c náº·ng bÃªn dÆ°á»i
         local stateHash = (isBot and "BOT" or "PLAYER") .. "_" .. tostring(currentMeshCount)
-        
-        if markData.LastColorNewHash == stateHash and markData.ColorNewApplied then
-            return -- Má»i thá»© ÄÃ£ ÄÆ°á»£c tÃ´ mÃ u trÆ°á»c ÄÃ³, ngáº¯t hÃ m táº¡i ÄÃ¢y Äá» trÃ¡nh Äá»t CPU!
-        end
-        
-        -- Náº¿u cÃ³ sá»± thay Äá»i (má»i báº­t, Äá»ch Äá»i sÃºng, lá»¥m Äá»), tiáº¿n hÃ nh cáº­p nháº­t mÃ u vÃ  lÆ°u Cache
-        markData.LastColorNewHash = stateHash
-        markData.ColorNewApplied = true
 
-        -- Chá» Load bá» mÃ u khi thá»±c sá»± cáº§n xá»­ lÃ½
+        local nowT = os.clock()
+        local lastApply = markData.LastColorNewTime or 0
+        if markData.LastColorNewHash == stateHash
+           and markData.ColorNewApplied == true
+           and (nowT - lastApply) < 0.30 then
+            return
+        end
+        markData.LastColorNewHash = stateHash
+        markData.LastColorNewTime = nowT
+        markData.ColorNewApplied = false
+
         local LinearColorClass = import("LinearColor") or _G.FLinearColor
         local c_vis = LinearColorClass and LinearColorClass(0, 100, 0, 1) or {R=0, G=100, B=0, A=1}
         local c_occ = LinearColorClass and LinearColorClass(100, 0, 0, 1) or {R=100, G=0, B=0, A=1}
@@ -4856,6 +4959,7 @@ local function MainLoop()
                 end)
             end
         end
+        markData.ColorNewApplied = true
     end)
 end
 
@@ -4863,10 +4967,41 @@ local function UndoColorBodyNew(enemy, markData)
     pcall(function()
         if markData.ColorNewApplied then
             local meshes = GetAllSkeletalMeshes(enemy, markData)
+            local seen = {}
+            for _, m in ipairs(meshes) do seen[m] = true end
+            local function addMesh(m)
+                if slua.isValid(m) and not seen[m] then
+                    seen[m] = true
+                    table.insert(meshes, m)
+                end
+            end
+
             local weapon = nil
             pcall(function() weapon = enemy:GetCurrentWeapon() end)
-            if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
-                table.insert(meshes, weapon.Mesh)
+            if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then addMesh(weapon.Mesh) end
+
+            local avatar = nil
+            pcall(function()
+                avatar = enemy.CharacterAvatarComp2_BP
+                if not avatar and enemy.getAvatarComponent2 then avatar = enemy:getAvatarComponent2() end
+            end)
+            if slua.isValid(avatar) and avatar.GetMeshCompBySlot then
+                for slot = 0, 7 do
+                    pcall(function() addMesh(avatar:GetMeshCompBySlot(slot)) end)
+                end
+            end
+
+            for _, className in ipairs({"SkeletalMeshComponent","StaticMeshComponent"}) do
+                local ok, cls = pcall(import, className)
+                if ok and cls then
+                    pcall(function()
+                        if type(enemy.GetComponentsByClass) ~= "function" then return end
+                        local comps = enemy:GetComponentsByClass(cls)
+                        if comps then
+                            for i = 0, comps:Num() - 1 do addMesh(comps:Get(i)) end
+                        end
+                    end)
+                end
             end
 
             for _, mesh in ipairs(meshes) do
@@ -4882,7 +5017,7 @@ local function UndoColorBodyNew(enemy, markData)
                 end
             end
             markData.ColorNewApplied = false
-            markData.LastColorNewHash = "" -- XÃ³a Cache Äá» láº§n sau báº­t láº¡i sáº½ tÃ­nh toÃ¡n láº¡i mÆ°á»£t mÃ 
+            markData.LastColorNewHash = ""
         end
     end)
 end
