@@ -5673,12 +5673,11 @@ end
                     local isBotResult, isStateLoaded = CheckIsAI(enemy, markData)
                     local isBot = markData.AK_IS_BOT or false
 
-                                        if _G.GTLMODConfig.ColorBodyNew then 
-                        ApplyColorBodyNew(enemy, markData)
-                    else
-                        UndoColorBodyNew(enemy, markData)
-                    end
-
+                 if _G.GTLMODConfig.ColorBodyNew then 
+    ApplyColorBodyNew(enemy, markData)   -- ✅ 2 args
+else
+    UndoColorBodyNew(enemy, markData)    -- ✅ 2 args
+end
                     local distM = 0
                     pcall(function() distM = localPlayer:GetDistanceTo(enemy) / 100 end)
 
