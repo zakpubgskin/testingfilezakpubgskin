@@ -5240,6 +5240,9 @@ for _, mesh in ipairs(meshes) do
         end)
     end
 end
+markData.ColorNewApplied = true
+    end)
+end
 
 local function UndoColorBodyNew(enemy, markData)
     pcall(function()
