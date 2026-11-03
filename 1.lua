@@ -4742,7 +4742,7 @@ ignoreActors:Add(target)
                         local traceHit = false
                         pcall(function()
                             traceHit = KismetSystemLibrary.LineTraceSingle(
-                                localPlayer,           -- WorldContext
+                                Player,           -- WorldContext
                                 camLoc,                -- Start
                                 headPos,               -- End
                                 UEnums.ETraceTypeQuery.TraceTypeQuery1,  -- Visibility channel
@@ -5015,6 +5015,21 @@ local function MainLoop()
     end
   local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
+        -- localPlayer nikaalo
+        local localPlayer = nil
+        pcall(function()
+            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+            if GameplayData and GameplayData.GetPlayerCharacter then
+                localPlayer = GameplayData.GetPlayerCharacter()
+            end
+        end)
+        if not Valid(localPlayer) then return end
+        
+        -- pc nikaalo
+        local pc = nil
+        pcall(function() pc = localPlayer:GetPlayerControllerSafety() end)
+        
+        -- Console commands (dyeing/outline enable)
         local KismetSystemLibrary = import("KismetSystemLibrary")
         local world = slua.getWorld()
         if world ~= _G.ConsoleNewWallWorld then
@@ -5027,6 +5042,7 @@ local function MainLoop()
             end
         end
 
+        -- Meshes collect karo
         local meshes = GetAllSkeletalMeshes(enemy, markData)
         local seen = {}
         for _, m in ipairs(meshes) do seen[m] = true end
@@ -5065,9 +5081,90 @@ local function MainLoop()
             end
         end
 
+        -- ==========================================
+        -- VISIBILITY CHECK (LINE TRACE)
+        -- Wall ke peeche = RED, saamne = GREEN
+        -- ==========================================
+        local curTime = os.clock()
+        if markData.LastVisCheckNewTime == nil or (curTime - markData.LastVisCheckNewTime) > 0.1 then
+            markData.LastVisCheckNewTime = curTime
+            local isHidden = true
+            
+            pcall(function()
+                if not Valid(pc) then return end
+                
+                -- Head bone position
+                local headPos = nil
+                if type(enemy.GetBonePos) == "function" then
+                    headPos = enemy:GetBonePos("head", {X=0,Y=0,Z=0})
+                end
+                if not headPos and type(enemy.GetSocketLocation) == "function" then
+                    headPos = enemy:GetSocketLocation("head")
+                end
+                if not headPos then
+                    headPos = enemy:K2_GetActorLocation()
+                    if headPos then headPos.Z = headPos.Z + 70 end
+                end
+                if not headPos then return end
+                
+                -- Camera location
+                local UGameplayStatics = import("GameplayStatics")
+                local camMgr = UGameplayStatics.GetPlayerCameraManager(pc, 0)
+                if not slua.isValid(camMgr) then return end
+                local camLoc = camMgr:GetCameraLocation()
+                if not camLoc then return end
+                
+                -- Line trace camera → head
+                local hitResult = import("HitResult")()
+                local ignoreActors = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
+                ignoreActors:Add(localPlayer)
+                ignoreActors:Add(enemy)
+                
+                local traceHit = false
+                pcall(function()
+                    traceHit = KismetSystemLibrary.LineTraceSingle(
+                        Player,
+                        camLoc,
+                        headPos,
+                        UEnums.ETraceTypeQuery.TraceTypeQuery1,
+                        false,
+                        ignoreActors,
+                        UEnums.EDrawDebugTrace.None,
+                        hitResult,
+                        true
+                    )
+                end)
+                
+                if traceHit and hitResult then
+                    local hitActor = hitResult.Actor
+                    if slua.isValid(hitActor) and hitActor ~= enemy then
+                        isHidden = true    -- wall beech mein = RED
+                    else
+                        isHidden = false   -- clear = GREEN
+                    end
+                else
+                    isHidden = false
+                end
+                
+                -- Fallback: agar trace fail ho jaye
+                if not traceHit then
+                    pcall(function()
+                        if type(pc.LineOfSightTo) == "function" then
+                            isHidden = not pc:LineOfSightTo(enemy)
+                        end
+                    end)
+                end
+            end)
+            
+            markData.CachedHiddenStateNew = isHidden
+        end
+        
+        local hidden = markData.CachedHiddenStateNew
+        if hidden == nil then hidden = true end
+
         local isBot = markData.AK_IS_BOT or false
         local currentMeshCount = #meshes
-        local stateHash = (isBot and "BOT" or "PLAYER") .. "_" .. tostring(currentMeshCount)
+        local stateHash = (isBot and "BOT" or "PLAYER") .. "_" .. tostring(currentMeshCount) .. "_" .. (hidden and "H" or "V")
 
         local nowT = os.clock()
         local lastApply = markData.LastColorNewTime or 0
@@ -5088,6 +5185,7 @@ local function MainLoop()
 
         local visColor = isBot and c_bVis or c_vis
         local occColor = isBot and c_bOcc or c_occ
+        local finalColor = hidden and occColor or visColor
 
         for _, mesh in ipairs(meshes) do
             if Valid(mesh) then
@@ -5100,12 +5198,12 @@ local function MainLoop()
                         mesh:SetDyeingColorFadeDistance(99999.0)
                         mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
                         mesh:SetDrawHighlight(true)
-                        mesh:OverrideHighlightColor(visColor)
+                        mesh:OverrideHighlightColor(finalColor)
                         mesh:SetHighlightCanBeOccluded(false)
                         mesh:SetDrawIdeaOutline(true)
                         mesh:SetIdeaOutlineNew(true)
                         mesh:SetIdeaOutlineOcclusionHighlight(true)
-                        mesh:OverrideIdeaOutlineColor(visColor)
+                        mesh:OverrideIdeaOutlineColor(finalColor)
                         mesh:SetIdeaOutlineOcclusionColor(occColor)
                         mesh:OverrideIdeaOutlineThickness(20.0)
                         mesh:SetIdeaOverrideOutlineAndOcclusion(true)
