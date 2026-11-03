@@ -1378,7 +1378,7 @@ local MasterLicenseRuntime = (function()
         local loading = self:_module('loading', nil,
             'client.slua.logic.loading.logic_loading', 'IsShowing')
         if not status or not loading then return nil, 'readiness_services_unavailable' end
-       if static(status, 'IsInFightingStatus') ~= true then return nil, 'waiting_gameplay' end
+        if static(status, 'IsInFightingStatus') ~= true then return nil, 'waiting_gameplay' end
         if static(loading, 'IsShowing') ~= false then return nil, 'waiting_loading' end
         return {world = world, controller = pc, pawn = pawn, root = root}
     end
@@ -2337,8 +2337,6 @@ _G.GTLMODConfig = _G.GTLMODConfig or {
     UnlockFPS = false, 
     IpadView = false, 
     IpadViewVehicle = false,
-    IpadViewScope = false,
-    IpadViewScopeFOV = 60,
     CustomAimbot = false, 
     CustomAimbotClose = false, 
     CustomHRecoil = false,  
@@ -3470,7 +3468,7 @@ function _G.InitModMenuTab()
     _G.ModMenuInitialized = true
 
     _G.GTLMODState.CustomTextData = _G.GTLMODState.CustomTextData or {
-        OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120,   IpadViewScopeFOV = 60, IpadViewVehicleFOV = 120,
+        OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120, IpadViewVehicleFOV = 120,
         AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250,
         AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30,
         AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchScopePred = 0, AimTouchScopeRecoil = 0,
@@ -3584,13 +3582,11 @@ function _G.InitModMenuTab()
         -- ==================== COMBAT GRAPHIC (SECTION 3) ====================
         local StackCombatGraphic = {
             { Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "CUSTOM IPAD VIEW", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadView end, SetFunc = function(c,v) _G.GTLMODConfig.IpadView = v return true end },
-            { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = ("FOV Value"), ExpandHandle = "ModMenu_Ipad_FOV", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.GTLMODState.CustomTextData.IpadViewFOV or 120 end,  SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewFOV = 90 + v return true end },
-            
-            { Key = "ModMenu_IpadScope_Ex", UI = AliasMap.TitleSwitcher, Text = "SMALL SCOPE (IPAD VIEW)", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewScope end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewScope = v return true end },
-            { Key = "ModMenu_IpadScope_FOV", UI = AliasMap.Slider, Text = "   SCOPE FOV (20-80)", ExpandHandle = "ModMenu_IpadScope_Ex", MinValue = 20, MaxValue = 80, min = 20, max = 80, GetFunc = function() return _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewScopeFOV = v return true end },
-            { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("IPAD VIEW VEHICLE"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
-            { Key = "ModMenu_IpadViewVehicle_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV (90-160)"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 90, MaxValue = 160, min = 90, max = 160, GetFunc = function() return _G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = v return true end }, { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "165 REAL FPS", GetFunc = function() return _G.GTLMODConfig.UnlockFPS end, SetFunc = function(c,v) _G.GTLMODConfig.UnlockFPS = v; if v then _G.GTLMODState.GraphicsUnlocked = false end return true end },
-          { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.ColorBodyNew end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v return true end },
+            { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = "   IPAD FOV (1-100)", ExpandHandle = "ModMenu_Ipad_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewFOV or 120) - 80 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewFOV = 80 + v return true end },
+            { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("Ipad View Vehicle"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
+            { Key = "ModMenu_IpadViewVehicle_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
+            { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "165 REAL FPS", GetFunc = function() return _G.GTLMODConfig.UnlockFPS end, SetFunc = function(c,v) _G.GTLMODConfig.UnlockFPS = v; if v then _G.GTLMODState.GraphicsUnlocked = false end return true end },
+            { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.wallhackng end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v return true end },
             { Key = "ModMenu_BlackSky", UI = AliasMap.Switcher, Text = "BLACK SKY", GetFunc = function() return _G.GTLMODConfig.BlackSky end, SetFunc = function(c,v) _G.GTLMODConfig.BlackSky = v return true end },
             { Key = "ModMenu_RemoveFog", UI = AliasMap.Switcher, Text = "REMOVE FOG", GetFunc = function() return _G.GTLMODConfig.RemoveFog end, SetFunc = function(c,v) _G.GTLMODConfig.RemoveFog = v return true end },
             
@@ -3852,9 +3848,74 @@ local function InitializeGraphicsUnlock()
     Notify("Graphics & FPS 165Hz Unlocked")
 end
 
+local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
+        local isInVehicle = Valid(currentVehicle) or localPlayer.bIsInVehicle
+        local uTPPCam = localPlayer.ThirdPersonCameraComponent
+        local uVehCam = localPlayer.VehicleCameraComponent
+        local camMgr = pc.PlayerCameraManager
 
+        -- 1. Xá»¬ LÃ KHI ÄANG Má» SCOPE (NGáº®M Báº®N)
+        if isAiming then
+            if _G.GTLMODConfig.IpadViewScope and _G.GTLMODState.CustomTextData then
+                local targetScope = _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60
+                if type(pc.FOV) == "function" then pc:FOV(targetScope) end
+                if Valid(camMgr) then
+                    camMgr.DefaultFOV = targetScope
+                    if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetScope) end
+                end
+            else
+                -- Náº¿u táº¯t Ipad Scope, tráº£ láº¡i FOV tháº­t cá»§a Game Äá» ngáº¯m chuáº©n
+                if type(pc.FOV) == "function" then pc:FOV(0) end
+                if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
+            end
+            return -- Ngáº¯t logic Äi bá»/xe vÃ¬ Æ°u tiÃªn Scope
+        end
 
-      
+        -- 2. Xá»¬ LÃ KHI KHÃNG NGáº®M Báº®N (ÄI Bá» HOáº¶C LÃI XE)
+        -- Phá»¥c há»i camera náº¿u trÆ°á»c ÄÃ³ vá»«a táº¯t Scope
+        if not isInVehicle or not _G.GTLMODConfig.IpadViewVehicle then
+            if type(pc.FOV) == "function" then pc:FOV(0) end
+            if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
+        end
+
+        -- Äi Bá»
+        if not isInVehicle then
+            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
+                local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
+                if Valid(uTPPCam) and uTPPCam.FieldOfView ~= targetTPP then 
+                    uTPPCam.FieldOfView = targetTPP 
+                end
+            else
+                if Valid(uTPPCam) and uTPPCam.FieldOfView ~= 90 then 
+                    uTPPCam.FieldOfView = 90 
+                end
+            end
+        end
+
+        -- LÃ¡i Xe
+        if isInVehicle then
+            if _G.GTLMODConfig.IpadViewVehicle and _G.GTLMODState.CustomTextData then
+                local targetVeh = _G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120
+                
+                if Valid(uVehCam) and uVehCam.FieldOfView ~= targetVeh then 
+                    uVehCam.FieldOfView = targetVeh 
+                end
+                
+                if targetVeh > 90 then
+                    if type(pc.FOV) == "function" then pc:FOV(targetVeh) end
+                    if Valid(camMgr) then
+                        camMgr.DefaultFOV = targetVeh
+                        if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetVeh) end
+                    end
+                end
+            else
+                if Valid(uVehCam) and uVehCam.FieldOfView ~= 90 then 
+                    uVehCam.FieldOfView = 90 
+                end
+            end
+        end
+    end)
+    
 -- ========================================== 
 -- INITIALIZE THE ESP SYSTEM (BASED)
 -- ========================================== 
@@ -4555,7 +4616,7 @@ local function MainLoop()
     InitializeNativeESP()
     ShowGTLMODVIPMenu()
     
-   if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
+    if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
         pcall(function()
             local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
             local uTPPCam = localPlayer.ThirdPersonCameraComponent
@@ -4571,61 +4632,6 @@ local function MainLoop()
             end
         end)
     end
-    -- ⬇️⬇️⬇️ VEHICLE FOV + SMALL SCOPE FOV ⬇️⬇️⬇️
-    pcall(function()
-        local isAiming = localPlayer.bIsWeaponAiming or localPlayer.bIsGunADS
-        local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
-        local isInVehicle = Valid(currentVehicle) or localPlayer.bIsInVehicle
-        local uTPPCam2 = localPlayer.ThirdPersonCameraComponent
-        local uVehCam = localPlayer.VehicleCameraComponent
-        local camMgr = pc.PlayerCameraManager
-
-        if isAiming then
-            if _G.GTLMODConfig.IpadViewScope and _G.GTLMODState.CustomTextData then
-                local targetScope = _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60
-                if type(pc.FOV) == "function" then pc:FOV(targetScope) end
-                if Valid(camMgr) then
-                    camMgr.DefaultFOV = targetScope
-                    if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetScope) end
-                end
-            else
-                if type(pc.FOV) == "function" then pc:FOV(0) end
-                if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
-            end
-            return
-        end
-
-        if not isInVehicle then
-            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
-                local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
-                if Valid(uTPPCam2) and uTPPCam2.FieldOfView ~= targetTPP then 
-                    uTPPCam2.FieldOfView = targetTPP 
-                end
-            end
-        end
-
-        if isInVehicle then
-            if _G.GTLMODConfig.IpadViewVehicle and _G.GTLMODState.CustomTextData then
-                local targetVeh = _G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120
-                if Valid(uVehCam) and uVehCam.FieldOfView ~= targetVeh then 
-                    uVehCam.FieldOfView = targetVeh 
-                end
-                if targetVeh > 90 then
-                    if type(pc.FOV) == "function" then pc:FOV(targetVeh) end
-                    if Valid(camMgr) then
-                        camMgr.DefaultFOV = targetVeh
-                        if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetVeh) end
-                    end
-                end
-            else
-                if Valid(uVehCam) and uVehCam.FieldOfView ~= 90 then 
-                    uVehCam.FieldOfView = 90 
-                end
-            end
-        end
-    end)
-    -- ⬆️⬆️⬆️ VEHICLE FOV END ⬆️⬆️⬆️
-    
   local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
         -- KÃ­ch hoáº¡t Console Command náº¿u chÆ°a báº­t (Chá» gá»i 1 láº§n)
@@ -5016,7 +5022,7 @@ end
             end
 
             for _, entity in ipairs(entities) do
-                local anyWeaponModOn = _G.GTLMODConfig.CustomHRecoil or _G.GTLMODConfig.CustomVRecoil or _G.GTLMODConfig.LessShake or _G.GTLMODConfig.Accuracy or _G.GTLMODConfig.AutoHead or _G.GTLMODConfig.CustomAimbot or _G.GTLMODConfig.CustomAimbotClose or _G.GTLMODConfig.CustomMagicBullet
+                local anyWeaponModOn = _G.GTLMODConfig.CustomHRecoil or _G.GTLMODConfig.CustomVRecoil or _G.GTLMODConfig.LessShake or _G.GTLMODConfig.Accuracy or _G.GTLMODConfig.AutoHead or _G.GTLMODConfig.CustomAimbot or _G.GTLMODConfig.CustomAimbotClose
 
                 if anyWeaponModOn then
                     if not entity.OriginalStatsCached then
@@ -5041,8 +5047,6 @@ end
                     elseif _G.GTLMODConfig.VerticalRecoil then entity.AccessoriesVRecoilFactor = 0.33 end
                     
                     if _G.GTLMODConfig.LessShake then entity.RecoilKickADS = 0.11; entity.RecoilKickADS = 0.0; entity.RecoilKickADS = 0.11 end
-                    if _G.GTLMODConfig.CustomMagicBullet then
-                        entity.BaseDamage = entity.BaseDamage * (_G.GTLMODState.CustomTextData.MagicHead or 1.0)
                         end
 
                     
@@ -5157,57 +5161,68 @@ end
         end
     end)
 
-    local GD = GameplayData
     pcall(function()
-                local allCharacters = {}
-        pcall(function()
-            if type(GD.GetAllPlayerCharacters) == "function" then
-                allCharacters = GD.GetAllPlayerCharacters() or {}
-            end
-            if (not allCharacters or #allCharacters == 0) and type(GD.GameCharacters) == "table" then
-                for _, char in pairs(GD.GameCharacters) do table.insert(allCharacters, char) end
-            end
-            if #allCharacters == 0 and type(GD.GetAllCharacters) == "function" then
-                allCharacters = GD.GetAllCharacters() or {}
-            end
-        end)
-
+        local allCharacters = {}
+        if GameplayData.GetAllPlayerCharacters then allCharacters = GameplayData.GetAllPlayerCharacters()
+        elseif GameplayData.GameCharacters then for _, char in pairs(GameplayData.GameCharacters) do table.insert(allCharacters, char) end end
+        
         local currentValidKeys = {}
         for _, enemy in pairs(allCharacters) do
-            if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID then
-                local bIsReallyDead = false
-                pcall(function()
-                    if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
-                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead end
-                    if enemy.HealthStatus ~= nil and enemy.HealthStatus == 2 then bIsReallyDead = true end
-                end)
-                if not bIsReallyDead then
-                    local eKey = GetSafeEnemyKey(enemy)
-                    currentValidKeys[eKey] = true
+            if Valid(enemy) and enemy ~= localPlayer then
+                currentValidKeys[GetSafeEnemyKey(enemy)] = true
+            end
+        end
+        
+        for key, data in pairs(_G.GTLMODState.EnemyMarks) do
+            if not currentValidKeys[key] then
+                SafeRemoveMark(data.radarMark)
+                SafeRemoveMark(data.hpMark)
+                SafeRemoveMark(data.distMark)
+                
+                if _G.AimTouchVisCache and _G.AimTouchVisCache[key] then
+                    _G.AimTouchVisCache[key] = nil
                 end
+                
+                if data.MIDs then
+                    for meshStr, midTable in pairs(data.MIDs) do
+                        for k, _ in pairs(midTable) do
+                            midTable[k] = nil
+                        end
+                    end
+                    data.MIDs = nil
+                end
+                
+                data.enemy = nil
+                data.CachedMeshes = nil
+                _G.GTLMODState.EnemyMarks[key] = nil
             end
         end
 
-        for eKey, markData in pairs(_G.GTLMODState.EnemyMarks) do
-            if not currentValidKeys[eKey] then
-                if markData.MIDs then markData.MIDs = nil end
-                if markData.MIDs_V3 then markData.MIDs_V3 = nil end
-                _G.GTLMODState.EnemyMarks[eKey] = nil
-            end
-        end
-
-        local aiCount = 0
         local realCount = 0
+        local aiCount = 0
+
+        local function GetFirstElemSafe(elemArray)
+            if elemArray and type(elemArray.Num) == "function" and elemArray:Num() > 0 then
+                if type(elemArray.Get) == "function" then return elemArray:Get(0) end
+            elseif elemArray and type(elemArray) == "table" and #elemArray > 0 then
+                return elemArray[1]
+            end
+            return nil
+        end
+
+        local mLoc = nil
+        pcall(function() if type(localPlayer.K2_GetActorLocation) == "function" then mLoc = localPlayer:K2_GetActorLocation() end end)
 
         for _, enemy in pairs(allCharacters) do
             if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID then
                 local bIsReallyDead = false
                 pcall(function()
                     if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
-                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead end
+                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead
+                    elseif enemy.bIsDeadFlag ~= nil then bIsReallyDead = enemy.bIsDeadFlag end
                     if enemy.HealthStatus ~= nil and enemy.HealthStatus == 2 then bIsReallyDead = true end
                 end)
-                -- ⬇️ YAHAN SE NEECHE PURANA CODE WAISA HI RAHEGA ⬇️
+
                 local eKey = GetSafeEnemyKey(enemy)
                 _G.GTLMODState.EnemyMarks[eKey] = _G.GTLMODState.EnemyMarks[eKey] or { enemy = enemy }
                 local markData = _G.GTLMODState.EnemyMarks[eKey]
@@ -5339,26 +5354,21 @@ end
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
-                                        if _G.GTLMODConfig.Esp7 then
+                    if _G.GTLMODConfig.Esp7 then
                         pcall(function()
                             local MyHUD = Cached_MyHUD
                             if not Valid(MyHUD) then return end
 
-                            local myTeamId = localPlayer.TeamID or (type(localPlayer.GetTeamID) == "function" and localPlayer:GetTeamID())
+                            local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
                             local myPos = localPlayer:K2_GetActorLocation()
-                            if not myPos then return end
                             local maxDist = 35000
                             local realCount = 0
                             local aiCount = 0
 
                             for _, tPawn in pairs(allCharacters) do
                                 if slua.isValid(tPawn) and tPawn ~= localPlayer then
-                                    local targetTeamId = tPawn.TeamID or (type(tPawn.GetTeamID) == "function" and tPawn:GetTeamID())
-                                    local isEnemy = true
-                                    if myTeamId ~= nil and targetTeamId ~= nil and myTeamId == targetTeamId then
-                                        isEnemy = false
-                                    end
-                                    if isEnemy then
+                                    local targetTeamId = tPawn.TeamID or tPawn:GetTeamID() or 0
+                                    if targetTeamId ~= myTeamId then
                                         local enemyPos = tPawn:K2_GetActorLocation()
                                         if enemyPos then
                                             local dx = enemyPos.X - myPos.X
