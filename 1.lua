@@ -4260,18 +4260,97 @@ end
 -- ==========================================
 local function ApplyColorBodyV2(enemy, pc, markData)
     pcall(function()
+        -- Get localPlayer for trace ignore
+        local localPlayer = nil
+        pcall(function()
+            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+            if GameplayData and GameplayData.GetPlayerCharacter then
+                localPlayer = GameplayData.GetPlayerCharacter()
+            end
+        end)
+        if not Valid(localPlayer) then return end
+        
         local meshes = GetAllSkeletalMeshes(enemy, markData)
         if #meshes == 0 then return end
         
+        -- ==========================================
+        -- VISIBILITY CHECK (REAL LINE TRACE)
+        -- Wall ke peeche = RED, saamne = GREEN
+        -- ==========================================
         local curTime = os.clock()
-        if markData.LastVisCheckTime == nil or (curTime - markData.LastVisCheckTime) > 0.3 then
+        if markData.LastVisCheckTime == nil or (curTime - markData.LastVisCheckTime) > 0.1 then
             markData.LastVisCheckTime = curTime
-            local isHidden = true
+            local isHidden = true   -- default hidden (fail-safe)
+            
             pcall(function()
-                if Valid(pc) and type(pc.LineOfSightTo) == "function" then
-                    if pc:LineOfSightTo(enemy) then isHidden = false else isHidden = true end
+                if not Valid(pc) then return end
+                
+                -- 1. Head bone position
+                local headPos = nil
+                if type(enemy.GetBonePos) == "function" then
+                    headPos = enemy:GetBonePos("head", {X=0,Y=0,Z=0})
+                end
+                if not headPos and type(enemy.GetSocketLocation) == "function" then
+                    headPos = enemy:GetSocketLocation("head")
+                end
+                if not headPos then
+                    headPos = enemy:K2_GetActorLocation()
+                    if headPos then headPos.Z = headPos.Z + 70 end
+                end
+                if not headPos then return end
+                
+                -- 2. Camera location
+                local UGameplayStatics = import("GameplayStatics")
+                local camMgr = UGameplayStatics.GetPlayerCameraManager(pc, 0)
+                if not slua.isValid(camMgr) then return end
+                local camLoc = camMgr:GetCameraLocation()
+                if not camLoc then return end
+                
+                -- 3. REAL LINE TRACE — camera se head tak
+                local KismetSystemLibrary = import("KismetSystemLibrary")
+                local hitResult = import("HitResult")()
+                
+                local ignoreActors = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
+                ignoreActors:Add(localPlayer)
+                ignoreActors:Add(enemy)
+                
+                local traceHit = false
+                pcall(function()
+                    traceHit = KismetSystemLibrary.LineTraceSingle(
+                        localPlayer,
+                        camLoc,
+                        headPos,
+                        UEnums.ETraceTypeQuery.TraceTypeQuery1,
+                        false,
+                        ignoreActors,
+                        UEnums.EDrawDebugTrace.None,
+                        hitResult,
+                        true
+                    )
+                end)
+                
+                -- 4. Wall/cover hit = hidden (RED)
+                if traceHit and hitResult then
+                    local hitActor = hitResult.Actor
+                    if slua.isValid(hitActor) and hitActor ~= enemy then
+                        isHidden = true    -- wall/cover beech mein = RED
+                    else
+                        isHidden = false   -- clear line = GREEN
+                    end
+                else
+                    isHidden = false       -- kuch block nahi = GREEN
+                end
+                
+                -- Fallback: agar trace fail ho jaye
+                if not traceHit then
+                    pcall(function()
+                        if type(pc.LineOfSightTo) == "function" then
+                            isHidden = not pc:LineOfSightTo(enemy)
+                        end
+                    end)
                 end
             end)
+            
             markData.CachedHiddenState = isHidden
         end
         
@@ -4280,11 +4359,16 @@ local function ApplyColorBodyV2(enemy, pc, markData)
         
         local finalColor = hidden and C_RED or C_GREEN
         
+        -- ==========================================
+        -- COLOR APPLY (existing logic — unchanged)
+        -- ==========================================
         local colorHash = string.format("%d_%d_%d", finalColor.R, finalColor.G, finalColor.B)
         local currentMeshCount = #meshes
         local isMeshChanged = (markData.LastMeshCount ~= currentMeshCount)
         
-        if not isMeshChanged and markData.LastHiddenState == hidden and markData.LastColorHash == colorHash then return end
+        if not isMeshChanged and markData.LastHiddenState == hidden and markData.LastColorHash == colorHash then 
+            return 
+        end
         
         if isMeshChanged and markData.MIDs then
             markData.MIDs = {}
@@ -4343,7 +4427,6 @@ local function ApplyColorBodyV2(enemy, pc, markData)
         end
     end)
 end
-
 local function UndoColorBodyV2(enemy, markData)
     pcall(function()
         if markData.ColorApplied then
