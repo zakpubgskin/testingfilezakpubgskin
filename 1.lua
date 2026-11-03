@@ -5891,6 +5891,9 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                                           -- ==========================================
                     -- ESP7 PREMIUM COUNTER — REAL 5 | BOT 3 (single line)
                     -- ==========================================
+                                        -- ==========================================
+                    -- ESP7 PREMIUM COUNTER — REAL 5 | BOT 3 (single line)
+                    -- ==========================================
                     if _G.GTLMODConfig.Esp7 then
                         pcall(function()
                             -- Count enemies
@@ -5957,47 +5960,41 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             local COL_GREEN_BG     = col(0.04, 0.42, 0.14, 0.96)
                             local COL_RED_BORDER   = col(1.00, 0.20, 0.30, 1.00)
                             local COL_GREEN_BORDER = col(0.20, 1.00, 0.50, 1.00)
-                            local COL_RED_TEXT     = col(1.00, 1.00, 1.00, 1.00)   -- white text on red
-                            local COL_GREEN_TEXT   = col(1.00, 1.00, 1.00, 1.00)   -- white text on green
+                            local COL_RED_TEXT     = col(1.00, 1.00, 1.00, 1.00)
+                            local COL_GREEN_TEXT   = col(1.00, 1.00, 1.00, 1.00)
                             local COL_WHITE_DIV    = col(1.00, 1.00, 1.00, 0.95)
                             local COL_DARK_OUTER   = col(0.00, 0.00, 0.00, 0.95)
                             local COL_GREY_BG      = col(0.22, 0.22, 0.24, 0.92)
                             local COL_GREY_TEXT    = col(0.70, 0.70, 0.72, 1.00)
 
-                                                        _G.__ESP7_UI = _G.__ESP7_UI or {}
+                            _G.__ESP7_UI = _G.__ESP7_UI or {}
                             local U = _G.__ESP7_UI
 
-                            -- === REBUILD IF CANVAS CHANGED OR WIDGET INVALID ===
+                            -- === DETECT REBUILD NEEDED (canvas changed or invalid) ===
                             local needsRebuild = false
                             if not (slua.isValid(U.OuterBorder)) then
                                 needsRebuild = true
                             elseif U.CachedCanvas ~= canvas then
-                                -- Canvas changed (map load / respawn / HUD rebuild) → rebuild
                                 needsRebuild = true
                             end
 
                             if needsRebuild then
-                                -- Clear old widget references
-                                U.OuterBorder = nil
-                                U.OuterBorderSlot = nil
-                                U.RedPanel = nil
-                                U.RedPanelSlot = nil
-                                U.GreenPanel = nil
-                                U.GreenPanelSlot = nil
-                                U.Divider = nil
-                                U.DividerSlot = nil
-                                U.RedBorderTop = nil
-                                U.RedBorderTopSlot = nil
-                                U.GreenBorderTop = nil
-                                U.GreenBorderTopSlot = nil
-                                U.RealText = nil
-                                U.RealTextSlot = nil
-                                U.BotText = nil
-                                U.BotTextSlot = nil
+                                -- Clear all old references
+                                U.OuterBorder = nil; U.OuterBorderSlot = nil
+                                U.RedPanel = nil; U.RedPanelSlot = nil
+                                U.GreenPanel = nil; U.GreenPanelSlot = nil
+                                U.Divider = nil; U.DividerSlot = nil
+                                U.RedBorderTop = nil; U.RedBorderTopSlot = nil
+                                U.GreenBorderTop = nil; U.GreenBorderTopSlot = nil
+                                U.RealText = nil; U.RealTextSlot = nil
+                                U.BotText = nil; U.BotTextSlot = nil
+                                U.LastReal = -1
+                                U.LastBot = -1
+                                U.LastX = nil
+                                U.LastY = nil
+                                U.Visible = false
                                 U.CachedCanvas = canvas
 
-                            -- === BUILD ONCE ===
-                            if not (slua.isValid(U.OuterBorder)) then
                                 local function mkBorder(color)
                                     local w = nil
                                     pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.Border", canvas) end)
@@ -6040,7 +6037,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 U.W, U.H = 280, 38
                                 U.Half = U.W * 0.5
 
-                                -- Outer black border (full frame)
+                                -- Outer black border
                                 U.OuterBorder = mkBorder(COL_DARK_OUTER)
                                 U.OuterBorderSlot = U.OuterBorder and mkSlot(U.OuterBorder, 0, 0, U.W, U.H, 55)
 
@@ -6064,20 +6061,19 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 U.GreenBorderTop = mkBorder(COL_GREEN_BORDER)
                                 U.GreenBorderTopSlot = U.GreenBorderTop and mkSlot(U.GreenBorderTop, U.Half + 1, 2, U.Half - 3, 2, 58)
 
-                                -- SINGLE TEXT on left: "REAL  5"
+                                -- Text: "REAL  0" (left)
                                 U.RealText = mkText("REAL  0", COL_RED_TEXT, 16)
                                 U.RealTextSlot = U.RealText and mkSlot(U.RealText, 2, 2, U.Half - 3, U.H - 4, 60)
 
-                                -- SINGLE TEXT on right: "BOT  3"
+                                -- Text: "BOT  0" (right)
                                 U.BotText = mkText("BOT  0", COL_GREEN_TEXT, 16)
                                 U.BotTextSlot = U.BotText and mkSlot(U.BotText, U.Half + 1, 2, U.Half - 3, U.H - 4, 60)
-
-                                U.LastReal, U.LastBot = -1, -1
-                                U.LastX, U.LastY = nil, nil
-                                U.Visible = false
                             end
 
-                            -- === UPDATE TEXT (single combined string) ===
+                            -- If build failed → bail
+                            if not (slua.isValid(U.OuterBorder)) then return end
+
+                            -- === UPDATE TEXT ===
                             if U.LastReal ~= realCount and slua.isValid(U.RealText) then
                                 pcall(function() U.RealText:SetText(string.format("REAL  %d", realCount)) end)
                                 U.LastReal = realCount
@@ -6149,18 +6145,37 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 U.LastX, U.LastY = x, y
                             end
 
-                            -- === SHOW ===
-                            if not U.Visible then
-                                for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
-                                    "RedBorderTop","GreenBorderTop",
-                                    "RealText","BotText"}) do
-                                    if slua.isValid(U[f]) then
-                                        pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
-                                    end
+                            -- === FORCE SHOW (every frame, in case widget was hidden) ===
+                            local function ensureVisible(w)
+                                if slua.isValid(w) then
+                                    pcall(function() w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
                                 end
-                                U.Visible = true
                             end
+                            ensureVisible(U.OuterBorder)
+                            ensureVisible(U.RedPanel)
+                            ensureVisible(U.GreenPanel)
+                            ensureVisible(U.Divider)
+                            ensureVisible(U.RedBorderTop)
+                            ensureVisible(U.GreenBorderTop)
+                            ensureVisible(U.RealText)
+                            ensureVisible(U.BotText)
+                            U.Visible = true
                         end)
+                    else
+                        -- Esp7 OFF → hide
+                        pcall(function()
+                            local U = _G.__ESP7_UI
+                            if not U then return end
+                            for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
+                                "RedBorderTop","GreenBorderTop",
+                                "RealText","BotText"}) do
+                                if slua and slua.isValid and slua.isValid(U[f]) then
+                                    pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+                                end
+                            end
+                            U.Visible = false
+                        end)
+                    end
                     else
                         -- Esp7 OFF → hide
                         pcall(function()
