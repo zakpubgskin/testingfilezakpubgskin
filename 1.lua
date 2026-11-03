@@ -6161,7 +6161,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             ensureVisible(U.BotText)
                             U.Visible = true
                         end)
-                    else
+                
                         -- Esp7 OFF → hide
                         pcall(function()
                             local U = _G.__ESP7_UI
