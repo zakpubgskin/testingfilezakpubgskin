@@ -4331,15 +4331,15 @@ local function ApplyColorBodyV2(enemy, pc, markData)
                 end)
                 
                 -- 4. Wall/cover hit = hidden (RED)
-                if traceHit and hitResult and slua.isValid(hitResult.Actor) then
-    if hitResult.Actor ~= enemy then
-        isHidden = true
-    else
-        isHidden = false
-    end
-else
-    isHidden = true
-end
+                               if traceHit and hitResult and slua.isValid(hitResult.Actor) then
+                    if hitResult.Actor ~= enemy then
+                        isHidden = true
+                    else
+                        isHidden = false
+                    end
+                else
+                    isHidden = true
+                end
                 
                 -- Fallback: agar trace fail ho jaye
                 if not traceHit then
@@ -4770,17 +4770,14 @@ ignoreActors:Add(target)
                         end)
                         
                         -- 5. Agar wall/cover hit hua → hidden
-                        if traceHit and hitResult then
-                            local hitActor = hitResult.Actor
-                            -- Agar jo hit hua wo target NAHI hai → wall/cover hai → hidden
-                            if slua.isValid(hitActor) and hitActor ~= target then
+                                                                      if traceHit and hitResult and slua.isValid(hitResult.Actor) then
+                            if hitResult.Actor ~= target then
                                 hidden = true
                             else
                                 hidden = false
                             end
                         else
-                            -- Kuch hit nahi → clear line → visible
-                            hidden = false
+                            hidden = true
                         end
                     end)
                     
@@ -5092,7 +5089,7 @@ local function MainLoop()
         local hidden = markData.CachedHidden
         if markData.LastVisCheckTime == nil or (now - markData.LastVisCheckTime) > 0.15 then
             markData.LastVisCheckTime = now
-            hidden = false
+            hidden = true
 
             pcall(function()
                 local localPlayer = nil
