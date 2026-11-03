@@ -5160,18 +5160,18 @@ local function MainLoop()
         markData.ColorNewApplied = true
 
         local LC = _G.FLinearColor or import("LinearColor")
--- Visible = YELLOW (255, 255, 0)
+-- 🟡 Visible = YELLOW
 local c_vis  = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=255, G=255, B=0, A=255}
--- Invisible = RED (255, 0, 0)
+-- 🔴 Invisible = RED
 local c_occ  = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=255, G=0, B=0, A=255}
--- Bot visible = light yellow
+-- 🟡 Bot visible = light yellow
 local c_bVis = LC and LC(1.0, 0.8, 0.2, 1.0) or {R=255, G=204, B=51, A=255}
--- Bot invisible = dark red
+-- 🔴 Bot invisible = dark red
 local c_bOcc = LC and LC(0.6, 0.0, 0.0, 1.0) or {R=153, G=0, B=0, A=255}
 
-        local visColor = isBot and c_bVis or c_vis
-        local occColor = isBot and c_bOcc or c_occ
-        local finalColor = hidden and occColor or visColor
+local visColor = isBot and c_bVis or c_vis
+local occColor = isBot and c_bOcc or c_occ
+local finalColor = hidden and occColor or visColor
 
         for _, mesh in ipairs(meshes) do
             if Valid(mesh) then
