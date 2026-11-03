@@ -4317,7 +4317,7 @@ local function ApplyColorBodyV2(enemy, pc, markData)
                 local traceHit = false
                 pcall(function()
                     traceHit = KismetSystemLibrary.LineTraceSingle(
-                        localPlayer,
+                        Player,
                         camLoc,
                         headPos,
                         UEnums.ETraceTypeQuery.TraceTypeQuery1,
