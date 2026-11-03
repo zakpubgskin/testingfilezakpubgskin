@@ -993,7 +993,7 @@ local MasterLoginUI = (function()
     end
     return Module
 end)()
-
+_G.__MASTER_LOGIN_UI = MasterLoginUI
 -- ============================================================================
 -- 3. WELCOME UI
 -- ============================================================================
@@ -5613,79 +5613,89 @@ end
                     local currentHp, maxHp = 100, 100
                     local showFrameUI = _G.GTLMODConfig.Esp5 or _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     
-                    if showFrameUI then
-                        pcall(function()
-                            if enemy.Health then currentHp = enemy.Health elseif type(enemy.GetHealth) == "function" then currentHp = enemy:GetHealth() end
-                            if enemy.HealthMax then maxHp = enemy.HealthMax elseif type(enemy.GetHealthMax) == "function" then maxHp = enemy:GetHealthMax() end
-                        end)
-                        if maxHp <= 0 then maxHp = 100 end
-                    end
-                    local hpRatio = currentHp / maxHp
+                    -- ════════════════════════════════════════════════════════════════
+-- PREMIUM ENEMY BOX & HEALTH BAR (Custom Drawn)
+-- ════════════════════════════════════════════════════════════════
+if showFrameUI then
+    pcall(function()
+        local hud = Cached_MyHUD
+        if not (Valid(hud) and hud.AddDebugText) then return end
+        if distM > 400 then return end
 
-                    if _G.GTLMODConfig.EspAntenna then
-                        pcall(function()
-                            local MyHUD = Cached_MyHUD
-                            if Valid(MyHUD) and distM <= 400 then
-                                local loopCount = 8  
-                                local zStep = 1000     
-                                local baseZ = 105     
-                                local topZ = baseZ + (loopCount * zStep)
-                                for i = 1, loopCount do
-                                    local zOffset = baseZ + (i * zStep)
-                                    MyHUD:AddDebugText("|", enemy, 0.06,
-                                        {X=0, Y=0, Z=zOffset}, {X=0, Y=0, Z=zOffset},
-                                        C_GREEN, true, false, true, nil, 1.2, true)
-                                end
-                                MyHUD:AddDebugText("I", enemy, 0.06,
-                                        {X=0, Y=0, Z=topZ + 60}, {X=0, Y=0, Z=topZ + 60},
-                                        C_GREEN, true, false, true, nil, 1.5, true)
-                            end
-                        end)
-                    end
+        -- Visibility check (Green if visible, Red if behind wall)
+        local isVisible = false
+        if pc and type(pc.LineOfSightTo) == "function" then
+            isVisible = pc:LineOfSightTo(enemy)
+        end
 
-                    if _G.GTLMODConfig.Esp6 then
-                        pcall(function()
-                            local curTime = os.clock()
-                            if markData.LastEsp6Time == nil or (curTime - markData.LastEsp6Time) >= 0.05 then
-                                markData.LastEsp6Time = curTime
-                                
-                                local MyHUD = Cached_MyHUD
-                                if Valid(MyHUD) and Valid(eMesh) and aLoc then
-                                    if distM <= 250 then
-                                        if type(eMesh.GetSocketLocation) == "function" then
-                                            for _, bName in ipairs(GLOBAL_BONE_LIST) do
-                                                
-                                                if distM > 50 and (bName ~= "head" and bName ~= "pelvis" and bName ~= "neck_01") then
-                                                    -- Skip
-                                                else
-                                                    local wLoc = eMesh:GetSocketLocation(bName)
-                                                    if wLoc then
-                                                        local offset = {X = wLoc.X - aLoc.X, Y = wLoc.Y - aLoc.Y, Z = wLoc.Z - aLoc.Z}
-                                                        
-                                                        local mark = "▪"
-                                                        local fixedSize = 0.25 
-                                                        local color = C_CYAN
-                                                        
-                                                        if bName == "head" then 
-                                                            mark = "●"
-                                                            fixedSize = 0.45
-                                                            color = C_RED
-                                                        elseif bName == "pelvis" or bName == "neck_01" then 
-                                                            mark = "▪"
-                                                            fixedSize = 0.35
-                                                            color = C_YELLOW 
-                                                        end
-                                                        
-                                                        MyHUD:AddDebugText(mark, enemy, 0.06, offset, offset, color, true, false, true, nil, fixedSize, true)
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end)
-                    end
+        local isKnock = (currentHp <= 0 or enemy.HealthStatus == 1)
+
+        -- Colors based on state
+        local boxColor = isKnock and {R=0, G=150, B=255, A=255} or (isVisible and {R=50, G=255, B=50, A=255} or {R=255, G=50, B=50, A=255})
+        
+        -- HP Bar Colors (Gradient: Green > 60%, Yellow > 30%, Red < 30%)
+        local hpColor = {R=50, G=255, B=50, A=255}
+        if isKnock then
+            hpColor = {R=0, G=150, B=255, A=255}
+        elseif hpRatio <= 0.3 then
+            hpColor = {R=255, G=50, B=50, A=255}
+        elseif hpRatio <= 0.6 then
+            hpColor = {R=255, G=255, B=0, A=255}
+        end
+
+        -- Box Dimensions
+        local headZ = 95
+        local footZ = -10
+        local halfW = 35
+        local cornerSize = 12
+
+        -- 1. Draw 4 Corner Brackets (L-Shapes)
+        -- Top Left
+        hud:AddDebugText("▬", enemy, 0.0, {X=-halfW, Y=0, Z=headZ}, {X=-halfW+cornerSize, Y=0, Z=headZ}, boxColor, true, false, true, nil, 0.4, true)
+        hud:AddDebugText("▮", enemy, 0.0, {X=-halfW, Y=0, Z=headZ}, {X=-halfW, Y=0, Z=headZ-cornerSize}, boxColor, true, false, true, nil, 0.4, true)
+        
+        -- Top Right
+        hud:AddDebugText("▬", enemy, 0.0, {X=halfW, Y=0, Z=headZ}, {X=halfW-cornerSize, Y=0, Z=headZ}, boxColor, true, false, true, nil, 0.4, true)
+        hud:AddDebugText("▮", enemy, 0.0, {X=halfW, Y=0, Z=headZ}, {X=halfW, Y=0, Z=headZ-cornerSize}, boxColor, true, false, true, nil, 0.4, true)
+
+        -- Bottom Left
+        hud:AddDebugText("▬", enemy, 0.0, {X=-halfW, Y=0, Z=footZ}, {X=-halfW+cornerSize, Y=0, Z=footZ}, boxColor, true, false, true, nil, 0.4, true)
+        hud:AddDebugText("▮", enemy, 0.0, {X=-halfW, Y=0, Z=footZ}, {X=-halfW, Y=0, Z=footZ+cornerSize}, boxColor, true, false, true, nil, 0.4, true)
+
+        -- Bottom Right
+        hud:AddDebugText("▬", enemy, 0.0, {X=halfW, Y=0, Z=footZ}, {X=halfW-cornerSize, Y=0, Z=footZ}, boxColor, true, false, true, nil, 0.4, true)
+        hud:AddDebugText("▮", enemy, 0.0, {X=halfW, Y=0, Z=footZ}, {X=halfW, Y=0, Z=footZ+cornerSize}, boxColor, true, false, true, nil, 0.4, true)
+
+        -- 2. Draw Health Bar (Above Head)
+        local barZ = headZ + 15
+        local barW = halfW * 2
+        local fillW = barW * hpRatio
+
+        -- Health Bar Background (Dark)
+        hud:AddDebugText("▬▬▬▬▬▬", enemy, 0.0, {X=-halfW, Y=0, Z=barZ}, {X=halfW, Y=0, Z=barZ}, {R=10, G=10, B=10, A=200}, true, false, true, nil, 0.8, true)
+        
+        -- Health Bar Fill (Dynamic Color)
+        if hpRatio > 0 then
+            hud:AddDebugText("▬▬▬▬▬▬", enemy, 0.0, {X=-halfW, Y=0, Z=barZ}, {X=-halfW + fillW, Y=0, Z=barZ}, hpColor, true, false, true, nil, 0.8, true)
+        end
+
+        -- 3. Distance Text (Below Feet)
+        hud:AddDebugText(string.format("%.0fm", distM), enemy, 0.0, {X=0, Y=0, Z=footZ - 15}, {X=0, Y=0, Z=footZ - 15}, {R=200, G=200, B=200, A=255}, true, false, true, nil, 0.7, true)
+    end)
+else
+    -- Hide native frame UI if not showing premium box
+    pcall(function()
+        if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
+        local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+        if Valid(uiComp) then
+            if markData.LastFrameUIState ~= "HIDDEN" then
+                if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                markData.LastFrameUIState = "HIDDEN"
+            end
+        end
+    end)
+end
 
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
@@ -5867,46 +5877,11 @@ end
 -- NATIVE ENEMY FRAME UI (health bar above enemies)
 -- ════════════════════════════════════════════════════════════════
 if showFrameUI then
-    pcall(function()
-        local SecurityCommonUtils = Cached_SecurityCommonUtils
-        local show = true
-        if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then
-            if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
-        end
-        if show and mLoc then
-            if aLoc and SecurityCommonUtils and SecurityCommonUtils.IsVector then
-                if SecurityCommonUtils.IsVector(aLoc) and SecurityCommonUtils.IsVector(mLoc) then
-                    if aLoc.Z >= 150000 or FVector.Dist2D(mLoc, aLoc) > 50000 then show = false end
-                end
-            end
-        end
-        if show then
-            if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then enemy:Replay_CreateEnemyFrameUI(true, true) end
-            if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(true) end
-            if enemy.Replay_UpdateEnemyFrameUI then enemy:Replay_UpdateEnemyFrameUI(hpRatio) end
-
-            local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-            if Valid(uiComp) then
-                if markData.LastFrameUIState ~= "VISIBLE" then
-                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
-                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
-                    markData.LastFrameUIState = "VISIBLE"
-                end
-            end
-        end
-    end)
-else
-    pcall(function()
-        if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
-        local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-        if Valid(uiComp) then
-            if markData.LastFrameUIState ~= "HIDDEN" then
-                if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                markData.LastFrameUIState = "HIDDEN"
-            end
-        end
-    end)
+    local hud = Cached_MyHUD
+    if Valid(hud) and hud.AddDebugText then
+        local label = string.format("[%.0fm] %s", distM, isVisible and "VIS" or "HIDDEN")
+        hud:AddDebugText(label, enemy)
+    end
 end
 
 -- ════════════════════════════════════════════════════════════════
@@ -5917,7 +5892,7 @@ if _G.GTLMODConfig.EspVipPro then
         local hud = Cached_MyHUD
         if not (Valid(hud) and hud.AddDebugText) then return end
         if distM > 400 then return end
-
+       local hpColor = {R=50, G=255, B=50, A=255}
         local hp = enemy.Health or 100
         local maxHp = enemy.HealthMax or 100
         local isKnock = (hp <= 0 or enemy.HealthStatus == 1)
@@ -6126,6 +6101,12 @@ local function FastTick()
     end
 
     if myToken ~= _G.GTLMODState.LoopToken then return end
+    
+    -- ✅ License UI animation tick (pulse/scan kaam karega)
+    if _G.__MASTER_LOGIN_UI and _G.__MASTER_LOGIN_UI.Tick then
+        pcall(_G.__MASTER_LOGIN_UI.Tick, 0.4)
+    end
+    
     pcall(MainLoop) 
     local okTicker, ticker = pcall(require, "common.time_ticker") 
     if okTicker and ticker and ticker.AddTimerOnce then 
@@ -6228,7 +6209,10 @@ end
 local function InitAllModSystems()
     if isExpired then return end
     if not BRLicenseActive() then return end
-
+     _G.TDFTDeKillCounts = {}
+    _G.NeedCheckDeadBoxTimer = 0
+    _G.CachedActorArray = nil
+    
     pcall(function()
         if _G.InitializeAutoHeadHooks then _G.InitializeAutoHeadHooks() end
     end)
