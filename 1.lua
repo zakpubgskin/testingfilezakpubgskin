@@ -4602,21 +4602,84 @@ _G.AimTouch = function()
             end
 
             -- VISIBILITY CHECK (cached 0.2s per enemy)
+                        -- VISIBILITY CHECK (FIXED — head bone screen projection)
             if not skip and useVisCheck then
                 local tId = GetSafeEnemyKey(target)
                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
                 local cached = _G.AimTouchVisCache[tId]
                 local nowT = os.clock()
-                if not cached or (nowT - (cached.t or 0)) > 0.2 then
-                    local hidden = true
+                
+                if not cached or (nowT - (cached.t or 0)) > 0.15 then
+                    local hidden = false
+                    
                     pcall(function()
-                        if type(pc.LineOfSightTo) == "function" then
-                            hidden = not pc.LineOfSightTo(target)
+                        -- Head bone position
+                        local headPos = nil
+                        if type(target.GetBonePos) == "function" then
+                            headPos = target:GetBonePos("head", {X=0,Y=0,Z=0})
+                        end
+                        if not headPos and type(target.GetSocketLocation) == "function" then
+                            headPos = target:GetSocketLocation("head")
+                        end
+                        if not headPos then
+                            headPos = target:K2_GetActorLocation()
+                            if headPos then headPos.Z = headPos.Z + 70 end
+                        end
+                        if not headPos then return end
+                        
+                        -- Screen pe project karo
+                        local FVector2D = import("Vector2D")
+                        local screen = FVector2D()
+                        local onScreen = false
+                        pcall(function()
+                            onScreen = pc:ProjectWorldLocationToScreen(headPos, screen, false)
+                        end)
+                        
+                        if not onScreen or screen.X <= 0 or screen.Y <= 0 then
+                            hidden = true
+                            return
+                        end
+                        
+                        -- LOS check (secondary)
+                        local los = true
+                        pcall(function()
+                            if type(pc.LineOfSightTo) == "function" then
+                                los = pc:LineOfSightTo(target)
+                            end
+                        end)
+                        
+                        if los == true then
+                            hidden = false
+                        else
+                            -- LOS false but head screen pe visible → visible maano
+                            local ui_util = require("client.common.ui_util")
+                            if ui_util then
+                                local vp = ui_util.GetViewportSize()
+                                if vp then
+                                    local cx = vp.X * 0.5
+                                    local cy = vp.Y * 0.5
+                                    local dx = screen.X - cx
+                                    local dy = screen.Y - cy
+                                    local dist = math.sqrt(dx*dx + dy*dy)
+                                    local threshold = (vp.X / 2.0) * 0.6
+                                    if dist <= threshold then
+                                        hidden = false
+                                    else
+                                        hidden = true
+                                    end
+                                else
+                                    hidden = false
+                                end
+                            else
+                                hidden = false
+                            end
                         end
                     end)
+                    
                     cached = { hidden = hidden, t = nowT }
                     _G.AimTouchVisCache[tId] = cached
                 end
+                
                 if cached and cached.hidden then skip = true end
             end
 
