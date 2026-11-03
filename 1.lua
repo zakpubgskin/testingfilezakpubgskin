@@ -6463,6 +6463,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     end
 
                     -- ESP HEALTH V1
+                    -- ESP HEALTH V1 — clean green HP text, no box
                     if _G.GTLMODConfig.EspVipPro then
                         pcall(function()
                             local hud = Cached_MyHUD
@@ -6485,22 +6486,22 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 bIsVisible = pc:LineOfSightTo(enemy)
                             end
 
-                            local textColor = {R=255, G=255, B=255, A=255}
+                            -- Green color always (unless knocked = blue)
+                            local textColor
                             if isKnock then
-                                textColor = {R=0, G=0, B=255, A=255}
+                                textColor = {R=0, G=180, B=255, A=255}   -- knock = cyan-blue
                             else
-                                textColor = bIsVisible and C_GREEN or C_RED
+                                textColor = {R=0, G=255, B=100, A=255}   -- GREEN (bright)
                             end
 
-                            local prefix = bIsVisible and "▶" or "▶"
-                            local label = ""
+                            local label
                             if isKnock then
-                                label = (pName ~= "" and string.format("%s [♿]", pName) or "♿")
+                                label = (pName ~= "" and string.format("%s ♿", pName) or "♿")
                             else
                                 if pName ~= "" then
-                                    label = string.format("%s %s %.0f%%", pName, prefix, pctValue)
+                                    label = string.format("%s %.0f%%", pName, pctValue)
                                 else
-                                    label = string.format("%s %.0f%%", prefix, pctValue)
+                                    label = string.format("%.0f%%", pctValue)
                                 end
                             end
 
@@ -6508,7 +6509,6 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                              textColor, true, false, true, nil, 1.0, true)
                         end)
                     end
-
                     -- ESP RANGE (Distance)
                     if _G.GTLMODConfig.EspDistance then
                         pcall(function()
