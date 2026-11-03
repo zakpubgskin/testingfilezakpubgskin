@@ -6176,20 +6176,8 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             U.Visible = false
                         end)
                     end
-                        -- Esp7 OFF → hide
-                        pcall(function()
-                            local U = _G.__ESP7_UI
-                            if not U then return end
-                            for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
-                                "RedBorderTop","GreenBorderTop",
-                                "RealText","BotText"}) do
-                                if slua and slua.isValid and slua.isValid(U[f]) then
-                                    pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-                                end
-                            end
-                            U.Visible = false
-                        end)
-                    end
+                       
+                        
                     -- ==========================================
                     -- ESP5 PREMIUM BOX (screen-space, corner brackets)
                     -- ==========================================
