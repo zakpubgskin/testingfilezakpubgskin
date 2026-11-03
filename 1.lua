@@ -2498,6 +2498,54 @@ function _G.InitializeAutoHeadHooks()
         end
     end)
 end
+-- ==========================================
+-- MAGIC BULLET — actual damage multiplier
+-- ==========================================
+_G.ApplyMagicBullet = function(weapon)
+    if not slua.isValid(weapon) then return end
+
+    local enabled = _G.GTLMODConfig.CustomMagicBullet == true
+    local data = _G.GTLMODState.CustomTextData or {}
+    local headMul = enabled and (tonumber(data.MagicHead) or 1.0) or 1.0
+    local bodyMul = enabled and (tonumber(data.MagicBody) or 1.0) or 1.0
+    local legsMul = enabled and (tonumber(data.MagicLegs) or 1.0) or 1.0
+
+    -- Collect the same entities the weapon-mod block already patches
+    local entities = {}
+    if Valid(weapon.ShootWeaponEntity_GEN_VARIABLE) then table.insert(entities, weapon.ShootWeaponEntity_GEN_VARIABLE) end
+    if Valid(weapon.ShootWeaponEntity) then table.insert(entities, weapon.ShootWeaponEntity) end
+    if Valid(weapon.ShootWeaponComponent) and Valid(weapon.ShootWeaponComponent.ShootWeaponEntityComponent) then
+        table.insert(entities, weapon.ShootWeaponComponent.ShootWeaponEntityComponent)
+    end
+
+    -- Feature off / sliders untouched -> restore and bail
+    if headMul == 1.0 and bodyMul == 1.0 and legsMul == 1.0 then
+        for _, entity in ipairs(entities) do
+            if entity.GTLMODMagicApplied and entity.OriginalMagicCached then
+                pcall(function()
+                    entity.BaseDamage = entity.OriginalMagicCached.BaseDamage
+                end)
+                entity.GTLMODMagicApplied = false
+            end
+        end
+        return
+    end
+
+    local avg = (headMul + bodyMul + legsMul) / 3.0
+
+    for _, entity in ipairs(entities) do
+        pcall(function()
+            if not entity.OriginalMagicCached then
+                entity.OriginalMagicCached = { BaseDamage = entity.BaseDamage }
+            end
+            local base = tonumber(entity.OriginalMagicCached.BaseDamage) or 0
+            if base > 0 then
+                entity.BaseDamage = base * avg
+            end
+            entity.GTLMODMagicApplied = true
+        end)
+    end
+end
 
 local function GetConfigPaths(fileName)
     local paths = {
@@ -3586,7 +3634,7 @@ function _G.InitModMenuTab()
             { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("Ipad View Vehicle"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
             { Key = "ModMenu_IpadViewVehicle_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
             { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "165 REAL FPS", GetFunc = function() return _G.GTLMODConfig.UnlockFPS end, SetFunc = function(c,v) _G.GTLMODConfig.UnlockFPS = v; if v then _G.GTLMODState.GraphicsUnlocked = false end return true end },
-            { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.wallhackng end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v return true end },
+            { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.ColorBodyNew end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v; return true end },
             { Key = "ModMenu_BlackSky", UI = AliasMap.Switcher, Text = "BLACK SKY", GetFunc = function() return _G.GTLMODConfig.BlackSky end, SetFunc = function(c,v) _G.GTLMODConfig.BlackSky = v return true end },
             { Key = "ModMenu_RemoveFog", UI = AliasMap.Switcher, Text = "REMOVE FOG", GetFunc = function() return _G.GTLMODConfig.RemoveFog end, SetFunc = function(c,v) _G.GTLMODConfig.RemoveFog = v return true end },
             
@@ -5197,36 +5245,21 @@ end
         end
     end)
     
-    local mHead_Global, mBody_Global, mLegs_Global = 1.0, 1.0, 1.0
-    local runInject_Global = false
-    
+        -- ── Magic Bullet (damage multiplier) ──
     pcall(function()
-        if _G.GTLMODConfig.CustomMagicBullet then
-            runInject_Global = true
-            mHead_Global = 1.0; mBody_Global = 1.0; mLegs_Global = 1.0
-            if _G.GTLMODState.CustomTextData then
-                local cData = _G.GTLMODState.CustomTextData
-                if cData.MagicHead ~= nil then mHead_Global = tonumber(cData.MagicHead) or mHead_Global end
-                if cData.MagicBody ~= nil then mBody_Global = tonumber(cData.MagicBody) or mBody_Global end
-                if cData.MagicLegs ~= nil then mLegs_Global = tonumber(cData.MagicLegs) or mLegs_Global end
+        local weapon = nil
+        pcall(function()
+            local weaponManager = localPlayer.WeaponManagerComponent
+            if Valid(weaponManager) and type(weaponManager.GetCurrentWeapon) == "function" then
+                weapon = weaponManager:GetCurrentWeapon()
             end
-        elseif _G.GTLMODConfig.MagicBullet then
-            runInject_Global = true
-            mHead_Global = 1.05; mBody_Global = 1.0; mLegs_Global = 1.0
+        end)
+        if not Valid(weapon) then
+            if type(localPlayer.GetCurrentShootWeapon) == "function" then weapon = localPlayer:GetCurrentShootWeapon()
+            elseif type(localPlayer.GetCurrentWeapon) == "function" then weapon = localPlayer:GetCurrentWeapon() end
         end
-
-        if runInject_Global then
-            local currentMagicHash = "M_"..tostring(mHead_Global).."_"..tostring(mBody_Global).."_"..tostring(mLegs_Global)
-            if _G.GTLMODState.LastMagicConfigHash ~= currentMagicHash then
-                _G.GTLMODState.MagicUpdateVersion = (_G.GTLMODState.MagicUpdateVersion or 0) + 1
-                _G.GTLMODState.LastMagicConfigHash = currentMagicHash
-            end
-        else
-            -- KHI MAGIC BULLET Bá» Táº®T, RESTORE Láº I HASH Vá» 0
-            if _G.GTLMODState.LastMagicConfigHash ~= "OFF" then
-                _G.GTLMODState.MagicUpdateVersion = (_G.GTLMODState.MagicUpdateVersion or 0) + 1
-                _G.GTLMODState.LastMagicConfigHash = "OFF"
-            end
+        if Valid(weapon) and _G.ApplyMagicBullet then
+            _G.ApplyMagicBullet(weapon)
         end
     end)
 
@@ -5317,24 +5350,7 @@ end
                     local isBotResult, isStateLoaded = CheckIsAI(enemy, markData)
                     local isBot = markData.AK_IS_BOT or false
 
-                    local currentMeshCount = 0
-                    if Valid(eMesh) then
-                        local tempMeshes = GetAllSkeletalMeshes(enemy, markData)
-                        currentMeshCount = #tempMeshes
-                    end
-                    local isMeshChanged = (markData.LastMeshCountWall ~= currentMeshCount)
-
-                    if _G.GTLMODConfig.wallhackng then
-                        if isMeshChanged or not markData.WallhackApplied then
-                            Applywallhackng(enemy, markData)
-                            markData.WallhackApplied = true
-                            markData.LastMeshCountWall = currentMeshCount
-                        end
-                    else
-                        Undowallhackng(enemy, markData)
-                    end
-
-                    if _G.GTLMODConfig.ColorBodyNew then 
+                                        if _G.GTLMODConfig.ColorBodyNew then 
                         ApplyColorBodyNew(enemy, markData)
                     else
                         UndoColorBodyNew(enemy, markData)
