@@ -5964,8 +5964,37 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             local COL_GREY_BG      = col(0.22, 0.22, 0.24, 0.92)
                             local COL_GREY_TEXT    = col(0.70, 0.70, 0.72, 1.00)
 
-                            _G.__ESP7_UI = _G.__ESP7_UI or {}
+                                                        _G.__ESP7_UI = _G.__ESP7_UI or {}
                             local U = _G.__ESP7_UI
+
+                            -- === REBUILD IF CANVAS CHANGED OR WIDGET INVALID ===
+                            local needsRebuild = false
+                            if not (slua.isValid(U.OuterBorder)) then
+                                needsRebuild = true
+                            elseif U.CachedCanvas ~= canvas then
+                                -- Canvas changed (map load / respawn / HUD rebuild) → rebuild
+                                needsRebuild = true
+                            end
+
+                            if needsRebuild then
+                                -- Clear old widget references
+                                U.OuterBorder = nil
+                                U.OuterBorderSlot = nil
+                                U.RedPanel = nil
+                                U.RedPanelSlot = nil
+                                U.GreenPanel = nil
+                                U.GreenPanelSlot = nil
+                                U.Divider = nil
+                                U.DividerSlot = nil
+                                U.RedBorderTop = nil
+                                U.RedBorderTopSlot = nil
+                                U.GreenBorderTop = nil
+                                U.GreenBorderTopSlot = nil
+                                U.RealText = nil
+                                U.RealTextSlot = nil
+                                U.BotText = nil
+                                U.BotTextSlot = nil
+                                U.CachedCanvas = canvas
 
                             -- === BUILD ONCE ===
                             if not (slua.isValid(U.OuterBorder)) then
