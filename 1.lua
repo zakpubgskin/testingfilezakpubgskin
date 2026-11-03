@@ -5183,7 +5183,7 @@ local function MainLoop()
                 pcall(function()
                     if type(mesh.SetDrawDyeing) == "function" then
                         mesh:SetDrawDyeing(true)
-                        mesh:SetDrawDyeingMode(1)
+                        mesh:SetDrawDyeingMode(2)
                         mesh:SetVisibleDyeingColor(visColor)
                         mesh:SetOccludedDyeingColor(occColor)
                         mesh:SetDyeingColorFadeDistance(99999.0)
@@ -5768,7 +5768,7 @@ end
                     local isBot = markData.AK_IS_BOT or false
 
                 if _G.GTLMODConfig.ColorBodyNew then 
-    ApplyColorBodyNew(enemy, markData, localPlayer, pc, Cached_KismetSystemLibrary, Cached_World)
+    ApplyColorBodyNew(enemy, markData)
 else
     UndoColorBodyNew(enemy, markData)
 end
