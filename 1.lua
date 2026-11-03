@@ -6150,6 +6150,9 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     -- ==========================================
                     -- ESP5 PREMIUM BOX (screen-space, corner brackets)
                     -- ==========================================
+                                        -- ==========================================
+                    -- ESP5 PREMIUM BOX — SMOOTH (screen-space, lerp)
+                    -- ==========================================
                     if _G.GTLMODConfig.Esp5 then
                         pcall(function()
                             local root = nil
@@ -6183,7 +6186,6 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             end
 
                             local isBot = markData.AK_IS_BOT or false
-                            local visible = false
                             local bIsVisible = true
                             pcall(function()
                                 if pc and type(pc.LineOfSightTo) == "function" then
@@ -6193,19 +6195,16 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
 
                             -- Colors
                             local COL_MAIN = isBot
-                                and col(0.20, 1.00, 0.55, 1.0)   -- green
-                                or col(1.00, 0.22, 0.35, 1.0)    -- red
+                                and col(0.20, 1.00, 0.55, 1.0)
+                                or col(1.00, 0.22, 0.35, 1.0)
                             local COL_CORNER = isBot
                                 and col(0.10, 0.85, 0.40, 1.0)
                                 or col(0.90, 0.15, 0.28, 1.0)
-                            local COL_GLOW = isBot
-                                and col(0.10, 1.00, 0.45, 0.35)
-                                or col(1.00, 0.10, 0.20, 0.35)
                             local COL_HP_HIGH = col(0.20, 1.00, 0.35, 1.0)
                             local COL_HP_MID  = col(1.00, 0.85, 0.20, 1.0)
                             local COL_HP_LOW  = col(1.00, 0.20, 0.20, 1.0)
 
-                            -- Head/feet screen positions
+                            -- === PROJECT HEAD/FEET (EVERY FRAME) ===
                             local hX, hY, fX, fY = nil, nil, nil, nil
                             pcall(function()
                                 local capsule = enemy.CapsuleComponent
@@ -6220,7 +6219,9 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 if center then
                                     halfH = tonumber(halfH) or 85
                                     if halfH < 10 or halfH > 200 then halfH = 85 end
+                                    -- Head bone (top of capsule + slight offset)
                                     local headW = V3 and V3(center.X, center.Y, center.Z + halfH) or {X=center.X,Y=center.Y,Z=center.Z+halfH}
+                                    -- Feet bone (bottom of capsule)
                                     local feetW = V3 and V3(center.X, center.Y, center.Z - halfH) or {X=center.X,Y=center.Y,Z=center.Z-halfH}
                                     local hv = V2 and V2(0,0) or {X=0,Y=0}
                                     local fv = V2 and V2(0,0) or {X=0,Y=0}
@@ -6235,8 +6236,8 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             local key = tostring(enemy.PlayerKey or enemy)
                             local S = _G.__ESP5_UI[key]
 
+                            -- If off-screen → hide
                             if not (hX and hY and fX and fY) then
-                                -- Off-screen → hide
                                 if S then
                                     for _, f in ipairs({"BoxTop","BoxBottom","BoxLeft","BoxRight",
                                         "C1H","C1V","C2H","C2V","C3H","C3V","C4H","C4V",
@@ -6246,11 +6247,12 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                         end
                                     end
                                     S.Visible = false
+                                    S.LastHX, S.LastHY, S.LastFX, S.LastFY = nil, nil, nil, nil
                                 end
                                 return
                             end
 
-                            -- Canvas transform (world→canvas)
+                            -- Canvas transform (cache per-frame)
                             local scale = 1.0
                             pcall(function()
                                 if WL and WL.GetViewportScale then
@@ -6259,15 +6261,8 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 end
                             end)
                             local sx, sy = 1.0 / scale, 1.0 / scale
-                            hX, hY = hX * sx, hY * sy
-                            fX, fY = fX * sx, fY * sy
-
-                            -- Box dims
-                            local boxW = math.max(24, math.abs(fX - hX) + 20)
-                            local boxH = math.max(40, math.abs(fY - hY))
-                            local boxL = math.min(hX, fX) - boxW * 0.5
-                            local boxT = math.min(hY, fY)
-                            local cornerLen = math.max(8, math.min(18, boxH * 0.15))
+                            local curHX, curHY = hX * sx, hY * sy
+                            local curFX, curFY = fX * sx, fY * sy
 
                             -- Lazy build
                             if not (S and slua.isValid(S.BoxTop)) then
@@ -6297,17 +6292,15 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                     return s
                                 end
 
-                                -- 4 thin sides (very low opacity for premium glow)
-                                S.BoxTop    = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxTop    = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.35))
                                 S.BoxTopSlot= S.BoxTop and mkSlot(S.BoxTop, 0, 0, 0, 0, 41)
-                                S.BoxBottom = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxBottom = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.35))
                                 S.BoxBottomSlot = S.BoxBottom and mkSlot(S.BoxBottom, 0, 0, 0, 0, 41)
-                                S.BoxLeft   = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxLeft   = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.35))
                                 S.BoxLeftSlot= S.BoxLeft and mkSlot(S.BoxLeft, 0, 0, 0, 0, 41)
-                                S.BoxRight  = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxRight  = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.35))
                                 S.BoxRightSlot = S.BoxRight and mkSlot(S.BoxRight, 0, 0, 0, 0, 41)
 
-                                -- 4 corner brackets (H + V each)
                                 S.C1H = mkBorder(COL_CORNER); S.C1HSlot = S.C1H and mkSlot(S.C1H, 0, 0, 0, 0, 42)
                                 S.C1V = mkBorder(COL_CORNER); S.C1VSlot = S.C1V and mkSlot(S.C1V, 0, 0, 0, 0, 42)
                                 S.C2H = mkBorder(COL_CORNER); S.C2HSlot = S.C2H and mkSlot(S.C2H, 0, 0, 0, 0, 42)
@@ -6317,18 +6310,36 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 S.C4H = mkBorder(COL_CORNER); S.C4HSlot = S.C4H and mkSlot(S.C4H, 0, 0, 0, 0, 42)
                                 S.C4V = mkBorder(COL_CORNER); S.C4VSlot = S.C4V and mkSlot(S.C4V, 0, 0, 0, 0, 42)
 
-                                -- HP bar under feet
                                 S.HpBg = mkBorder(col(0.05, 0.05, 0.08, 0.75))
                                 S.HpBgSlot = S.HpBg and mkSlot(S.HpBg, 0, 0, 0, 0, 43)
                                 S.HpFill = mkBorder(COL_HP_HIGH)
                                 S.HpFillSlot = S.HpFill and mkSlot(S.HpFill, 0, 0, 0, 0, 44)
 
                                 S.Visible = false
+                                S.LastHX, S.LastHY, S.LastFX, S.LastFY = nil, nil, nil, nil
                             end
 
                             if not S then return end
 
-                            -- Update box geometry
+                            -- === SMOOTH INTERPOLATION (lerp) ===
+                            local LERP = 0.45  -- 0.45 = smooth but responsive (0.2 = laggy, 0.7 = snappy)
+                            local lhX, lhY = curHX, curHY
+                            local lfX, lfY = curFX, curFY
+                            if S.LastHX and S.LastHY and S.LastFX and S.LastFY then
+                                lhX = S.LastHX + (curHX - S.LastHX) * LERP
+                                lhY = S.LastHY + (curHY - S.LastHY) * LERP
+                                lfX = S.LastFX + (curFX - S.LastFX) * LERP
+                                lfY = S.LastFY + (curFY - S.LastFY) * LERP
+                            end
+                            S.LastHX, S.LastHY, S.LastFX, S.LastFY = lhX, lhY, lfX, lfY
+
+                            -- Box dims (smoothed)
+                            local boxW = math.max(24, math.abs(lfX - lhX) + 20)
+                            local boxH = math.max(40, math.abs(lfY - lhY))
+                            local boxL = math.min(lhX, lfX) - boxW * 0.5
+                            local boxT = math.min(lhY, lfY)
+                            local cornerLen = math.max(8, math.min(18, boxH * 0.15))
+
                             local function setPos(slot, x, y)
                                 if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(x, y)) end) end
                             end
@@ -6336,26 +6347,23 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 if slua.isValid(slot) then pcall(function() slot:SetSize(V2(w, h)) end) end
                             end
 
-                            -- Top / bottom / left / right (thin 1px lines)
+                            -- Thin 1px borders
                             setPos(S.BoxTopSlot, boxL, boxT); setSize(S.BoxTopSlot, boxW, 1)
                             setPos(S.BoxBottomSlot, boxL, boxT + boxH); setSize(S.BoxBottomSlot, boxW, 1)
                             setPos(S.BoxLeftSlot, boxL, boxT); setSize(S.BoxLeftSlot, 1, boxH)
                             setPos(S.BoxRightSlot, boxL + boxW, boxT); setSize(S.BoxRightSlot, 1, boxH)
 
-                            -- Corner 1 (top-left)
+                            -- Corner brackets
                             setPos(S.C1HSlot, boxL, boxT); setSize(S.C1HSlot, cornerLen, 2)
                             setPos(S.C1VSlot, boxL, boxT); setSize(S.C1VSlot, 2, cornerLen)
-                            -- Corner 2 (top-right)
                             setPos(S.C2HSlot, boxL + boxW - cornerLen, boxT); setSize(S.C2HSlot, cornerLen, 2)
                             setPos(S.C2VSlot, boxL + boxW - 2, boxT); setSize(S.C2VSlot, 2, cornerLen)
-                            -- Corner 3 (bottom-left)
                             setPos(S.C3HSlot, boxL, boxT + boxH - 2); setSize(S.C3HSlot, cornerLen, 2)
                             setPos(S.C3VSlot, boxL, boxT + boxH - cornerLen); setSize(S.C3VSlot, 2, cornerLen)
-                            -- Corner 4 (bottom-right)
                             setPos(S.C4HSlot, boxL + boxW - cornerLen, boxT + boxH - 2); setSize(S.C4HSlot, cornerLen, 2)
                             setPos(S.C4VSlot, boxL + boxW - 2, boxT + boxH - cornerLen); setSize(S.C4VSlot, 2, cornerLen)
 
-                            -- HP bar (under box, 24px gap)
+                            -- HP bar
                             local hp, maxHp = 100, 100
                             pcall(function()
                                 hp = tonumber(enemy.Health) or tonumber(enemy:GetHealth()) or 100
@@ -6368,7 +6376,6 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             setPos(S.HpBgSlot, barX, barY); setSize(S.HpBgSlot, barW, barH)
                             setPos(S.HpFillSlot, barX, barY); setSize(S.HpFillSlot, barW * hpRatio, barH)
 
-                            -- HP color based on ratio
                             local hpColor = COL_HP_HIGH
                             if hpRatio < 0.30 then hpColor = COL_HP_LOW
                             elseif hpRatio < 0.60 then hpColor = COL_HP_MID end
@@ -6376,7 +6383,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 pcall(function() S.HpFill:SetBrushColor(hpColor) end)
                             end
 
-                            -- Show all
+                            -- Show
                             if not S.Visible then
                                 for _, f in ipairs({"BoxTop","BoxBottom","BoxLeft","BoxRight",
                                     "C1H","C1V","C2H","C2V","C3H","C3V","C4H","C4V",
@@ -6389,7 +6396,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             end
                         end)
                     else
-                        -- Esp5 off — hide this enemy's box
+                        -- Esp5 off — hide
                         pcall(function()
                             local U = _G.__ESP5_UI
                             if not U then return end
@@ -6404,6 +6411,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 end
                             end
                             S.Visible = false
+                            S.LastHX, S.LastHY, S.LastFX, S.LastFY = nil, nil, nil, nil
                         end)
                     end
                     if showFrameUI then
