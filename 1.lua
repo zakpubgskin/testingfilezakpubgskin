@@ -5160,10 +5160,14 @@ local function MainLoop()
         markData.ColorNewApplied = true
 
         local LC = _G.FLinearColor or import("LinearColor")
-        local c_vis  = LC and LC(0, 100/255, 0, 1) or {R=0, G=100, B=0, A=1}
-        local c_occ  = LC and LC(100/255, 0, 0, 1) or {R=100, G=0, B=0, A=1}
-        local c_bVis = LC and LC(49/255, 48/255, 0, 100/255) or {R=49, G=48, B=0, A=100}
-        local c_bOcc = LC and LC(9/255, 1.5/255, 45/255, 100/255) or {R=9, G=1.5, B=45, A=100}
+-- Visible = YELLOW (255, 255, 0)
+local c_vis  = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=255, G=255, B=0, A=255}
+-- Invisible = RED (255, 0, 0)
+local c_occ  = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=255, G=0, B=0, A=255}
+-- Bot visible = light yellow
+local c_bVis = LC and LC(1.0, 0.8, 0.2, 1.0) or {R=255, G=204, B=51, A=255}
+-- Bot invisible = dark red
+local c_bOcc = LC and LC(0.6, 0.0, 0.0, 1.0) or {R=153, G=0, B=0, A=255}
 
         local visColor = isBot and c_bVis or c_vis
         local occColor = isBot and c_bOcc or c_occ
