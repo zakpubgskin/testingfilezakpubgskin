@@ -4358,7 +4358,13 @@ local function ApplyColorBodyV2(enemy, pc, markData)
         local hidden = markData.CachedHiddenState
         if hidden == nil then hidden = true end
         
-        local finalColor = hidden and C_RED or C_GREEN
+       -- 🔥 MAX BRIGHTNESS COLORS
+local BRIGHT_RED   = {R=1.0, G=0.0, B=0.0, A=1.0}
+local BRIGHT_GREEN = {R=0.0, G=1.0, B=0.0, A=1.0}
+local BRIGHT_CYAN  = {R=0.0, G=1.0, B=1.0, A=1.0}
+local BRIGHT_YELLOW = {R=1.0, G=1.0, B=0.0, A=1.0}
+
+local finalColor = hidden and BRIGHT_RED or BRIGHT_GREEN
         
         -- ==========================================
         -- COLOR APPLY (existing logic — unchanged)
