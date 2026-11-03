@@ -4987,6 +4987,9 @@ local function MainLoop()
         return 
     end
 
+    local Cached_KismetSystemLibrary = _G.Cached_KSL or import("KismetSystemLibrary")
+    _G.Cached_KSL = Cached_KismetSystemLibrary
+    local Cached_World = slua.getWorld()
     local Cached_PPM = nil
     pcall(function() Cached_PPM = import("PostProcessManager").GetInstance() end)
     local Cached_SecurityCommonUtils = nil
