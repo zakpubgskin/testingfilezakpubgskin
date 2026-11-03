@@ -5529,7 +5529,288 @@ end
                     local currentHp, maxHp = 100, 100
                     -- Esp5 removed — now handled by ESP5_* premium renderer below
 local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
-                    
+
+                    -- ==========================================
+                    -- ESPNAME PREMIUM TAG (head above, name + HP bar)
+                    -- ==========================================
+                    if _G.GTLMODConfig.EspName and not _G.GTLMODConfig.EspVipPro then
+                        pcall(function()
+                            local root = nil
+                            pcall(function()
+                                local ui = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
+                                if ui and ui.GetMainControlBaseUI then root = ui.GetMainControlBaseUI() end
+                            end)
+                            if not (slua and slua.isValid and slua.isValid(root)) then return end
+                            local canvas = nil
+                            pcall(function()
+                                if slua.isValid(root.CanvasPanel_0) then canvas = root.CanvasPanel_0
+                                elseif slua.isValid(root.CanvasPanel_42) then canvas = root.CanvasPanel_42 end
+                            end)
+                            if not (slua and slua.isValid and slua.isValid(canvas)) then return end
+
+                            local V2 = _G.FVector2D
+                            if not V2 then pcall(function() V2 = import("Vector2D") end) end
+                            local V3 = _G.FVector
+                            if not V3 then pcall(function() V3 = import("Vector") end) end
+                            local LC = _G.FLinearColor
+                            if not LC then pcall(function() LC = import("LinearColor") end) end
+                            local WL = nil
+                            pcall(function() WL = import("WidgetLayoutLibrary") end)
+
+                            local function col(r, g, b, a)
+                                if LC then
+                                    local ok, c = pcall(LC, r, g, b, a or 1.0)
+                                    if ok and c then return c end
+                                end
+                                return {R=r, G=g, B=b, A=a or 1.0}
+                            end
+
+                            -- Get enemy name
+                            local pName = nil
+                            pcall(function()
+                                pName = enemy.PlayerName or enemy.PlayerNamePublic
+                                if not pName and type(enemy.GetPlayerName) == "function" then
+                                    pName = enemy:GetPlayerName()
+                                end
+                            end)
+                            if not pName or pName == "" then pName = "Enemy" end
+                            pName = tostring(pName)
+
+                            -- HP info
+                            local hp, maxHp = 100, 100
+                            pcall(function()
+                                hp = tonumber(enemy.Health) or 100
+                                maxHp = tonumber(enemy.HealthMax) or 100
+                            end)
+                            local hpRatio = math.max(0, math.min(1, hp / math.max(1, maxHp)))
+                            local isKnock = (hp <= 0 or enemy.HealthStatus == 1)
+
+                            -- Visibility
+                            local bIsVisible = true
+                            pcall(function()
+                                if pc and type(pc.LineOfSightTo) == "function" then
+                                    bIsVisible = pc:LineOfSightTo(enemy)
+                                end
+                            end)
+
+                            -- Colors: visible = accent, occluded = dim red, knocked = blue
+                            local accentColor, textColor
+                            if isKnock then
+                                accentColor = col(0.35, 0.55, 1.00, 1.0)   -- blue
+                                textColor   = col(0.85, 0.92, 1.00, 1.0)
+                            elseif bIsVisible then
+                                accentColor = col(0.20, 1.00, 0.45, 1.0)   -- bright green
+                                textColor   = col(1.00, 1.00, 1.00, 1.0)   -- white
+                            else
+                                accentColor = col(1.00, 0.22, 0.30, 1.0)   -- red
+                                textColor   = col(1.00, 0.85, 0.85, 1.0)   -- soft red
+                            end
+
+                            -- HP bar color
+                            local hpColor = col(0.20, 1.00, 0.35, 1.0)
+                            if hpRatio < 0.30 then hpColor = col(1.00, 0.20, 0.20, 1.0)
+                            elseif hpRatio < 0.60 then hpColor = col(1.00, 0.85, 0.20, 1.0) end
+
+                            -- Head screen pos
+                            local hX, hY = nil, nil
+                            pcall(function()
+                                local capsule = enemy.CapsuleComponent
+                                local center, halfH = nil, nil
+                                if slua.isValid(capsule) then
+                                    if capsule.K2_GetComponentLocation then center = capsule:K2_GetComponentLocation() end
+                                    if capsule.GetScaledCapsuleHalfHeight then halfH = capsule:GetScaledCapsuleHalfHeight() end
+                                end
+                                if not center then
+                                    if type(enemy.K2_GetActorLocation) == "function" then center = enemy:K2_GetActorLocation() end
+                                end
+                                if center then
+                                    halfH = tonumber(halfH) or 85
+                                    if halfH < 10 or halfH > 200 then halfH = 85 end
+                                    local headW = V3 and V3(center.X, center.Y, center.Z + halfH + 20)
+                                        or {X=center.X, Y=center.Y, Z=center.Z+halfH+20}
+                                    local hv = V2 and V2(0,0) or {X=0, Y=0}
+                                    local ok1, r1 = pcall(function() return pc:ProjectWorldLocationToScreen(headW, hv, true) end)
+                                    if ok1 and r1 and (r1 == true or r1 == 1) then hX, hY = hv.X, hv.Y end
+                                end
+                            end)
+
+                            _G.__ESPNAME_UI = _G.__ESPNAME_UI or {}
+                            local key = tostring(enemy.PlayerKey or enemy)
+                            local S = _G.__ESPNAME_UI[key]
+
+                            if not (hX and hY) then
+                                if S then
+                                    for _, f in ipairs({"Bg","AccentBar","NameText","HpBg","HpFill"}) do
+                                        if slua.isValid(S[f]) then
+                                            pcall(function() S[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+                                        end
+                                    end
+                                    S.Visible = false
+                                end
+                                return
+                            end
+
+                            -- Canvas transform
+                            local scale = 1.0
+                            pcall(function()
+                                if WL and WL.GetViewportScale then
+                                    local s = WL.GetViewportScale(pc)
+                                    if s and s >= 0.01 and s <= 100 then scale = s end
+                                end
+                            end)
+                            hX, hY = hX / scale, hY / scale
+
+                            -- === LAZY BUILD ===
+                            if not (S and slua.isValid(S.Bg)) then
+                                _G.__ESPNAME_UI[key] = {}
+                                S = _G.__ESPNAME_UI[key]
+
+                                local function mkBorder(color)
+                                    local w = nil
+                                    pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.Border", canvas) end)
+                                    if not (slua and slua.isValid and slua.isValid(w)) then return nil end
+                                    pcall(function()
+                                        w:SetBrushColor(color)
+                                        w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                                    end)
+                                    return w
+                                end
+                                local function mkText(txt, color, size)
+                                    local w = nil
+                                    pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.TextBlock", canvas) end)
+                                    if not (slua and slua.isValid and slua.isValid(w)) then return nil end
+                                    pcall(function()
+                                        w:SetText(txt)
+                                        w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                                        local sc = LC and LC(color.R, color.G, color.B, color.A) or color
+                                        w:SetColorAndOpacity(sc)
+                                        if w.SetJustification then w:SetJustification(1) end
+                                        local f = w.Font
+                                        if f then f.Size = size; w:SetFont(f) end
+                                    end)
+                                    return w
+                                end
+                                local function mkSlot(widget, x, y, w, h, z)
+                                    local s = nil
+                                    pcall(function() s = canvas:AddChildToCanvas(widget) end)
+                                    if not s then return nil end
+                                    pcall(function()
+                                        s:SetAutoSize(false)
+                                        s:SetPosition(V2(x, y))
+                                        s:SetSize(V2(w, h))
+                                        s:SetZOrder(z)
+                                    end)
+                                    return s
+                                end
+
+                                -- Dark background frame
+                                S.Bg = mkBorder(col(0.03, 0.03, 0.05, 0.88))
+                                S.BgSlot = S.Bg and mkSlot(S.Bg, 0, 0, 0, 0, 62)
+
+                                -- Left accent bar (colored strip, 3px wide)
+                                S.AccentBar = mkBorder(accentColor)
+                                S.AccentBarSlot = S.AccentBar and mkSlot(S.AccentBar, 0, 0, 3, 0, 63)
+
+                                -- Name text
+                                S.NameText = mkText(pName, textColor, 13)
+                                S.NameTextSlot = S.NameText and mkSlot(S.NameText, 0, 0, 0, 0, 64)
+
+                                -- HP bar background (thin, under name)
+                                S.HpBg = mkBorder(col(0.05, 0.05, 0.08, 0.85))
+                                S.HpBgSlot = S.HpBg and mkSlot(S.HpBg, 0, 0, 0, 0, 63)
+
+                                -- HP bar fill
+                                S.HpFill = mkBorder(hpColor)
+                                S.HpFillSlot = S.HpFill and mkSlot(S.HpFill, 0, 0, 0, 0, 64)
+
+                                S.LastName = pName
+                                S.LastHpRatio = -1
+                                S.Visible = false
+                            end
+
+                            if not S then return end
+
+                            -- === UPDATE TEXT IF NAME CHANGED ===
+                            if S.LastName ~= pName and slua.isValid(S.NameText) then
+                                pcall(function() S.NameText:SetText(pName) end)
+                                S.LastName = pName
+                            end
+
+                            -- === UPDATE COLORS (visibility state) ===
+                            if slua.isValid(S.AccentBar) then
+                                pcall(function() S.AccentBar:SetBrushColor(accentColor) end)
+                            end
+                            if slua.isValid(S.NameText) then
+                                pcall(function() S.NameText:SetColorAndOpacity(textColor) end)
+                            end
+                            if slua.isValid(S.HpFill) then
+                                pcall(function() S.HpFill:SetBrushColor(hpColor) end)
+                            end
+
+                            -- === DIMENSIONS ===
+                            -- Width based on name length (min 90, max 200)
+                            local nameLen = #pName
+                            local tagW = math.max(90, math.min(200, 26 + nameLen * 7))
+                            local tagH = 26
+                            local hpBarH = 3
+
+                            -- === POSITION (head above, centered on name) ===
+                            local tagX = hX - tagW * 0.5
+                            local tagY = hY - tagH
+
+                            local function setPos(slot, x, y)
+                                if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(x, y)) end) end
+                            end
+                            local function setSize(slot, w, h)
+                                if slua.isValid(slot) then pcall(function() slot:SetSize(V2(w, h)) end) end
+                            end
+
+                            -- Bg
+                            setPos(S.BgSlot, tagX, tagY)
+                            setSize(S.BgSlot, tagW, tagH)
+
+                            -- Accent bar (left edge, inside bg)
+                            setPos(S.AccentBarSlot, tagX, tagY)
+                            setSize(S.AccentBarSlot, 3, tagH)
+
+                            -- Name text (padded from accent bar)
+                            setPos(S.NameTextSlot, tagX + 8, tagY)
+                            setSize(S.NameTextSlot, tagW - 12, tagH - hpBarH - 2)
+
+                            -- HP bar (bottom of tag)
+                            local hpY = tagY + tagH - hpBarH - 1
+                            setPos(S.HpBgSlot, tagX + 4, hpY)
+                            setSize(S.HpBgSlot, tagW - 8, hpBarH)
+                            setPos(S.HpFillSlot, tagX + 4, hpY)
+                            setSize(S.HpFillSlot, (tagW - 8) * hpRatio, hpBarH)
+
+                            -- === SHOW ===
+                            if not S.Visible then
+                                for _, f in ipairs({"Bg","AccentBar","NameText","HpBg","HpFill"}) do
+                                    if slua.isValid(S[f]) then
+                                        pcall(function() S[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+                                    end
+                                end
+                                S.Visible = true
+                            end
+                        end)
+                    else
+                        -- EspName off OR EspVipPro on — hide this enemy's name tag
+                        pcall(function()
+                            local U = _G.__ESPNAME_UI
+                            if not U then return end
+                            local key = tostring(enemy.PlayerKey or enemy)
+                            local S = U[key]
+                            if not S then return end
+                            for _, f in ipairs({"Bg","AccentBar","NameText","HpBg","HpFill"}) do
+                                if slua and slua.isValid and slua.isValid(S[f]) then
+                                    pcall(function() S[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+                                end
+                            end
+                            S.Visible = false
+                        end)
+                    end
+
                     if showFrameUI then
                         pcall(function()
                             if enemy.Health then currentHp = enemy.Health elseif type(enemy.GetHealth) == "function" then currentHp = enemy:GetHealth() end
@@ -6245,7 +6526,8 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     end
 
                     -- ESP NAME
-                    if _G.GTLMODConfig.EspName and not _G.GTLMODConfig.EspVipPro then
+                                       -- ESP NAME -- DISABLED (now handled by ESPNAME_* premium renderer)
+                    if false then
                         pcall(function()
                             local hud = Cached_MyHUD
                             if not (Valid(hud) and hud.AddDebugText) then return end
