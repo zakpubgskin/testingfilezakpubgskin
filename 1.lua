@@ -5527,7 +5527,8 @@ end
                     pcall(function() distM = localPlayer:GetDistanceTo(enemy) / 100 end)
 
                     local currentHp, maxHp = 100, 100
-                    local showFrameUI = _G.GTLMODConfig.Esp5 or _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
+                    -- Esp5 removed — now handled by ESP5_* premium renderer below
+local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     
                     if showFrameUI then
                         pcall(function()
@@ -5606,7 +5607,7 @@ end
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
-                                        if _G.GTLMODConfig.Esp7 then
+                                       if _G.GTLMODConfig.Esp7 then
                         pcall(function()
                             -- === COUNT ENEMIES ===
                             local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
@@ -5640,7 +5641,7 @@ end
                                 end
                             end
 
-                            -- === PREMIUM TRANSPARENT UI ===
+                            -- === PREMIUM SPLIT-PANEL COUNTER ===
                             local root = nil
                             pcall(function()
                                 local ui = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
@@ -5667,20 +5668,22 @@ end
                                 return {R=r, G=g, B=b, A=a or 1.0}
                             end
 
-                            -- VIP Palette
-                            local COL_NEON_RED     = col(1.00, 0.22, 0.35, 1.0)
-                            local COL_NEON_GREEN   = col(0.20, 1.00, 0.55, 1.0)
-                            local COL_WHITE        = col(1.00, 1.00, 1.00, 1.0)
-                            local COL_GREY         = col(0.55, 0.55, 0.60, 1.0)
-                            local COL_GOLD         = col(1.00, 0.85, 0.32, 1.0)
-                            local COL_RED_BAR      = col(1.00, 0.15, 0.25, 1.0)
-                            local COL_GREEN_BAR    = col(0.15, 1.00, 0.45, 1.0)
-                            local COL_BAR_DARK     = col(0.05, 0.05, 0.08, 0.65)
+                            -- Premium palette
+                            local COL_RED_BG     = col(0.55, 0.04, 0.08, 0.96)
+                            local COL_GREEN_BG   = col(0.04, 0.42, 0.14, 0.96)
+                            local COL_RED_BORDER = col(1.00, 0.20, 0.30, 1.00)
+                            local COL_GREEN_BORDER = col(0.20, 1.00, 0.50, 1.00)
+                            local COL_RED_TEXT   = col(1.00, 0.92, 0.94, 1.00)
+                            local COL_GREEN_TEXT = col(0.92, 1.00, 0.94, 1.00)
+                            local COL_WHITE_DIV  = col(1.00, 1.00, 1.00, 0.90)
+                            local COL_DARK_OUTER = col(0.00, 0.00, 0.00, 0.95)
+                            local COL_GREY_BG    = col(0.22, 0.22, 0.24, 0.92)
+                            local COL_GREY_TEXT  = col(0.70, 0.70, 0.72, 1.00)
 
                             _G.__ESP7_UI = _G.__ESP7_UI or {}
                             local U = _G.__ESP7_UI
 
-                            if not (slua.isValid(U.RedIcon)) then
+                            if not (slua.isValid(U.OuterBorder)) then
                                 local function mkBorder(color)
                                     local w = nil
                                     pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.Border", canvas) end)
@@ -5719,104 +5722,92 @@ end
                                     return s
                                 end
 
-                                -- Compact dimensions (transparent)
-                                U.W, U.H = 260, 22
+                                -- Dimensions
+                                U.W, U.H = 280, 40
                                 U.Half = U.W * 0.5
 
-                                -- === ICONS (left red diamond, right green diamond) ===
-                                U.RedIcon = mkText("⬢", COL_NEON_RED, 14)
-                                U.RedIconSlot = U.RedIcon and mkSlot(U.RedIcon, 0, 0, 18, U.H, 60)
-                                U.BotIcon = mkText("⬢", COL_NEON_GREEN, 14)
-                                U.BotIconSlot = U.BotIcon and mkSlot(U.BotIcon, U.W - 18, 0, 18, U.H, 60)
+                                -- === OUTER DARK BORDER (full frame) ===
+                                U.OuterBorder = mkBorder(COL_DARK_OUTER)
+                                U.OuterBorderSlot = U.OuterBorder and mkSlot(U.OuterBorder, 0, 0, U.W, U.H, 55)
 
-                                -- === LABEL: REAL count (left, after icon) ===
-                                U.RealLabel = mkText("0", COL_NEON_RED, 16)
-                                U.RealLabelSlot = U.RealLabel and mkSlot(U.RealLabel, 18, 0, 40, U.H, 61)
+                                -- === LEFT PANEL (RED) ===
+                                U.RedPanel = mkBorder(COL_RED_BG)
+                                U.RedPanelSlot = U.RedPanel and mkSlot(U.RedPanel, 2, 2, U.Half - 3, U.H - 4, 56)
 
-                                -- === LABEL: BOT count (right, before icon) ===
-                                U.BotLabel = mkText("0", COL_NEON_GREEN, 16)
-                                U.BotLabelSlot = U.BotLabel and mkSlot(U.BotLabel, U.W - 58, 0, 40, U.H, 61)
+                                -- === RIGHT PANEL (GREEN) ===
+                                U.GreenPanel = mkBorder(COL_GREEN_BG)
+                                U.GreenPanelSlot = U.GreenPanel and mkSlot(U.GreenPanel, U.Half + 1, 2, U.Half - 3, U.H - 4, 56)
 
-                                -- === HEALTH BAR (red side) — thin bar under red count ===
-                                U.RealBarBg = mkBorder(COL_BAR_DARK)
-                                U.RealBarBgSlot = U.RealBarBg and mkSlot(U.RealBarBg, 20, U.H + 1, 38, 3, 59)
-                                U.RealBarFill = mkBorder(COL_RED_BAR)
-                                U.RealBarFillSlot = U.RealBarFill and mkSlot(U.RealBarFill, 20, U.H + 1, 38, 3, 60)
+                                -- === CENTER WHITE DIVIDER (2px) ===
+                                U.Divider = mkBorder(COL_WHITE_DIV)
+                                U.DividerSlot = U.Divider and mkSlot(U.Divider, U.Half - 1, 4, 2, U.H - 8, 57)
 
-                                -- === HEALTH BAR (green side) ===
-                                U.BotBarBg = mkBorder(COL_BAR_DARK)
-                                U.BotBarBgSlot = U.BotBarBg and mkSlot(U.BotBarBg, U.W - 58, U.H + 1, 38, 3, 59)
-                                U.BotBarFill = mkBorder(COL_GREEN_BAR)
-                                U.BotBarFillSlot = U.BotBarFill and mkSlot(U.BotBarFill, U.W - 58, U.H + 1, 38, 3, 60)
+                                -- === RED NEON BORDER (top of left panel) ===
+                                U.RedBorderTop = mkBorder(COL_RED_BORDER)
+                                U.RedBorderTopSlot = U.RedBorderTop and mkSlot(U.RedBorderTop, 2, 2, U.Half - 3, 2, 58)
 
-                                -- === CENTER VIP BADGE (tiny crown) ===
-                                U.CenterBadge = mkText("♛", COL_GOLD, 11)
-                                U.CenterBadgeSlot = U.CenterBadge and mkSlot(U.CenterBadge, U.Half - 6, 0, 14, U.H, 60)
+                                -- === GREEN NEON BORDER (top of right panel) ===
+                                U.GreenBorderTop = mkBorder(COL_GREEN_BORDER)
+                                U.GreenBorderTopSlot = U.GreenBorderTop and mkSlot(U.GreenBorderTop, U.Half + 1, 2, U.Half - 3, 2, 58)
+
+                                -- === LABEL "REAL" (small, top-left) ===
+                                U.RealLabel = mkText("REAL", COL_RED_TEXT, 11)
+                                U.RealLabelSlot = U.RealLabel and mkSlot(U.RealLabel, 4, 4, U.Half - 8, 12, 60)
+
+                                -- === COUNT "5" (large, center-left) ===
+                                U.RealCount = mkText("0", COL_RED_TEXT, 22)
+                                U.RealCountSlot = U.RealCount and mkSlot(U.RealCount, 4, 15, U.Half - 8, 24, 60)
+
+                                -- === LABEL "BOT" (small, top-right) ===
+                                U.BotLabel = mkText("BOT", COL_GREEN_TEXT, 11)
+                                U.BotLabelSlot = U.BotLabel and mkSlot(U.BotLabel, U.Half + 3, 4, U.Half - 8, 12, 60)
+
+                                -- === COUNT "3" (large, center-right) ===
+                                U.BotCount = mkText("0", COL_GREEN_TEXT, 22)
+                                U.BotCountSlot = U.BotCount and mkSlot(U.BotCount, U.Half + 3, 15, U.Half - 8, 24, 60)
 
                                 U.LastReal, U.LastBot = -1, -1
                                 U.LastX, U.LastY = nil, nil
                                 U.Visible = false
-                                U.PulseClock = 0
-                                U.LastTick = os.clock()
                             end
 
                             -- === UPDATE LABELS ===
-                            if U.LastReal ~= realCount and slua.isValid(U.RealLabel) then
-                                pcall(function() U.RealLabel:SetText(tostring(realCount)) end)
+                            if U.LastReal ~= realCount and slua.isValid(U.RealCount) then
+                                pcall(function() U.RealCount:SetText(tostring(realCount)) end)
                                 U.LastReal = realCount
                             end
-                            if U.LastBot ~= aiCount and slua.isValid(U.BotLabel) then
-                                pcall(function() U.BotLabel:SetText(tostring(aiCount)) end)
+                            if U.LastBot ~= aiCount and slua.isValid(U.BotCount) then
+                                pcall(function() U.BotCount:SetText(tostring(aiCount)) end)
                                 U.LastBot = aiCount
                             end
-
-                            -- === PULSE ===
-                            local nowT = os.clock()
-                            local dt = nowT - (U.LastTick or nowT)
-                            U.LastTick = nowT
-                            U.PulseClock = (U.PulseClock or 0) + dt
-                            local pulse = 0.5 + 0.5 * math.sin(U.PulseClock * 3.0)
 
                             -- === COLORS (grey if 0) ===
                             local redActive = realCount > 0
                             local botActive = aiCount > 0
 
+                            if slua.isValid(U.RedPanel) then
+                                pcall(function() U.RedPanel:SetBrushColor(redActive and COL_RED_BG or COL_GREY_BG) end)
+                            end
+                            if slua.isValid(U.GreenPanel) then
+                                pcall(function() U.GreenPanel:SetBrushColor(botActive and COL_GREEN_BG or COL_GREY_BG) end)
+                            end
+                            if slua.isValid(U.RedBorderTop) then
+                                pcall(function() U.RedBorderTop:SetBrushColor(redActive and COL_RED_BORDER or COL_GREY_TEXT) end)
+                            end
+                            if slua.isValid(U.GreenBorderTop) then
+                                pcall(function() U.GreenBorderTop:SetBrushColor(botActive and COL_GREEN_BORDER or COL_GREY_TEXT) end)
+                            end
                             if slua.isValid(U.RealLabel) then
-                                local a = redActive and (0.85 + pulse * 0.15) or 0.40
-                                pcall(function() U.RealLabel:SetColorAndOpacity(col(1.00, 0.22, 0.35, a)) end)
+                                pcall(function() U.RealLabel:SetColorAndOpacity(redActive and COL_RED_TEXT or COL_GREY_TEXT) end)
+                            end
+                            if slua.isValid(U.RealCount) then
+                                pcall(function() U.RealCount:SetColorAndOpacity(redActive and COL_RED_TEXT or COL_GREY_TEXT) end)
                             end
                             if slua.isValid(U.BotLabel) then
-                                local a = botActive and (0.85 + pulse * 0.15) or 0.40
-                                pcall(function() U.BotLabel:SetColorAndOpacity(col(0.20, 1.00, 0.55, a)) end)
+                                pcall(function() U.BotLabel:SetColorAndOpacity(botActive and COL_GREEN_TEXT or COL_GREY_TEXT) end)
                             end
-                            if slua.isValid(U.RedIcon) then
-                                local a = redActive and (0.85 + pulse * 0.15) or 0.35
-                                pcall(function() U.RedIcon:SetColorAndOpacity(col(1.00, 0.22, 0.35, a)) end)
-                            end
-                            if slua.isValid(U.BotIcon) then
-                                local a = botActive and (0.85 + pulse * 0.15) or 0.35
-                                pcall(function() U.BotIcon:SetColorAndOpacity(col(0.20, 1.00, 0.55, a)) end)
-                            end
-                            if slua.isValid(U.CenterBadge) then
-                                local a = 0.65 + pulse * 0.35
-                                pcall(function() U.CenterBadge:SetColorAndOpacity(col(1.00, 0.85, 0.32, a)) end)
-                            end
-
-                            -- === HEALTH BARS (fill proportional to count / 50) ===
-                            local barMaxW = 38
-                            local realRatio = math.min(1.0, realCount / 30.0)
-                            local botRatio  = math.min(1.0, aiCount / 30.0)
-                            if slua.isValid(U.RealBarFillSlot) then
-                                pcall(function() U.RealBarFillSlot:SetSize(V2(barMaxW * realRatio, 3)) end)
-                            end
-                            if slua.isValid(U.BotBarFillSlot) then
-                                pcall(function() U.BotBarFillSlot:SetSize(V2(barMaxW * botRatio, 3)) end)
-                            end
-                            if slua.isValid(U.RealBarFill) then
-                                pcall(function() U.RealBarFill:SetBrushColor(col(1.00, 0.15, 0.25, redActive and 1.0 or 0.30)) end)
-                            end
-                            if slua.isValid(U.BotBarFill) then
-                                pcall(function() U.BotBarFill:SetBrushColor(col(0.15, 1.00, 0.45, botActive and 1.0 or 0.30)) end)
+                            if slua.isValid(U.BotCount) then
+                                pcall(function() U.BotCount:SetColorAndOpacity(botActive and COL_GREEN_TEXT or COL_GREY_TEXT) end)
                             end
 
                             -- === POSITION (top-center) ===
@@ -5847,22 +5838,24 @@ end
                                 local function setPos(slot, px, py)
                                     if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(px, py)) end) end
                                 end
-                                setPos(U.RedIconSlot, x, y)
-                                setPos(U.RealLabelSlot, x + 18, y)
-                                setPos(U.RealBarBgSlot, x + 20, y + U.H + 1)
-                                setPos(U.RealBarFillSlot, x + 20, y + U.H + 1)
-                                setPos(U.CenterBadgeSlot, x + U.Half - 6, y)
-                                setPos(U.BotBarBgSlot, x + U.W - 58, y + U.H + 1)
-                                setPos(U.BotBarFillSlot, x + U.W - 58, y + U.H + 1)
-                                setPos(U.BotLabelSlot, x + U.W - 58, y)
-                                setPos(U.BotIconSlot, x + U.W - 18, y)
+                                setPos(U.OuterBorderSlot, x, y)
+                                setPos(U.RedPanelSlot, x + 2, y + 2)
+                                setPos(U.GreenPanelSlot, x + U.Half + 1, y + 2)
+                                setPos(U.DividerSlot, x + U.Half - 1, y + 4)
+                                setPos(U.RedBorderTopSlot, x + 2, y + 2)
+                                setPos(U.GreenBorderTopSlot, x + U.Half + 1, y + 2)
+                                setPos(U.RealLabelSlot, x + 4, y + 4)
+                                setPos(U.RealCountSlot, x + 4, y + 15)
+                                setPos(U.BotLabelSlot, x + U.Half + 3, y + 4)
+                                setPos(U.BotCountSlot, x + U.Half + 3, y + 15)
                                 U.LastX, U.LastY = x, y
                             end
 
                             -- === SHOW ===
                             if not U.Visible then
-                                for _, f in ipairs({"RedIcon","BotIcon","RealLabel","BotLabel",
-                                    "RealBarBg","RealBarFill","BotBarBg","BotBarFill","CenterBadge"}) do
+                                for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
+                                    "RedBorderTop","GreenBorderTop",
+                                    "RealLabel","RealCount","BotLabel","BotCount"}) do
                                     if slua.isValid(U[f]) then
                                         pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
                                     end
@@ -5875,13 +5868,274 @@ end
                         pcall(function()
                             local U = _G.__ESP7_UI
                             if not U then return end
-                            for _, f in ipairs({"RedIcon","BotIcon","RealLabel","BotLabel",
-                                "RealBarBg","RealBarFill","BotBarBg","BotBarFill","CenterBadge"}) do
+                            for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
+                                "RedBorderTop","GreenBorderTop",
+                                "RealLabel","RealCount","BotLabel","BotCount"}) do
                                 if slua and slua.isValid and slua.isValid(U[f]) then
                                     pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
                                 end
                             end
                             U.Visible = false
+                        end)
+                    end
+
+                    -- ==========================================
+                    -- ESP5 PREMIUM BOX (screen-space, corner brackets)
+                    -- ==========================================
+                    if _G.GTLMODConfig.Esp5 then
+                        pcall(function()
+                            local root = nil
+                            pcall(function()
+                                local ui = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
+                                if ui and ui.GetMainControlBaseUI then root = ui.GetMainControlBaseUI() end
+                            end)
+                            if not (slua and slua.isValid and slua.isValid(root)) then return end
+                            local canvas = nil
+                            pcall(function()
+                                if slua.isValid(root.CanvasPanel_0) then canvas = root.CanvasPanel_0
+                                elseif slua.isValid(root.CanvasPanel_42) then canvas = root.CanvasPanel_42 end
+                            end)
+                            if not (slua and slua.isValid and slua.isValid(canvas)) then return end
+
+                            local V2 = _G.FVector2D
+                            if not V2 then pcall(function() V2 = import("Vector2D") end) end
+                            local V3 = _G.FVector
+                            if not V3 then pcall(function() V3 = import("Vector") end) end
+                            local LC = _G.FLinearColor
+                            if not LC then pcall(function() LC = import("LinearColor") end) end
+                            local WL = nil
+                            pcall(function() WL = import("WidgetLayoutLibrary") end)
+
+                            local function col(r, g, b, a)
+                                if LC then
+                                    local ok, c = pcall(LC, r, g, b, a or 1.0)
+                                    if ok and c then return c end
+                                end
+                                return {R=r, G=g, B=b, A=a or 1.0}
+                            end
+
+                            local isBot = markData.AK_IS_BOT or false
+                            local visible = false
+                            local bIsVisible = true
+                            pcall(function()
+                                if pc and type(pc.LineOfSightTo) == "function" then
+                                    bIsVisible = pc:LineOfSightTo(enemy)
+                                end
+                            end)
+
+                            -- Colors
+                            local COL_MAIN = isBot
+                                and col(0.20, 1.00, 0.55, 1.0)   -- green
+                                or col(1.00, 0.22, 0.35, 1.0)    -- red
+                            local COL_CORNER = isBot
+                                and col(0.10, 0.85, 0.40, 1.0)
+                                or col(0.90, 0.15, 0.28, 1.0)
+                            local COL_GLOW = isBot
+                                and col(0.10, 1.00, 0.45, 0.35)
+                                or col(1.00, 0.10, 0.20, 0.35)
+                            local COL_HP_HIGH = col(0.20, 1.00, 0.35, 1.0)
+                            local COL_HP_MID  = col(1.00, 0.85, 0.20, 1.0)
+                            local COL_HP_LOW  = col(1.00, 0.20, 0.20, 1.0)
+
+                            -- Head/feet screen positions
+                            local hX, hY, fX, fY = nil, nil, nil, nil
+                            pcall(function()
+                                local capsule = enemy.CapsuleComponent
+                                local center, halfH = nil, nil
+                                if slua.isValid(capsule) then
+                                    if capsule.K2_GetComponentLocation then center = capsule:K2_GetComponentLocation() end
+                                    if capsule.GetScaledCapsuleHalfHeight then halfH = capsule:GetScaledCapsuleHalfHeight() end
+                                end
+                                if not center then
+                                    if type(enemy.K2_GetActorLocation) == "function" then center = enemy:K2_GetActorLocation() end
+                                end
+                                if center then
+                                    halfH = tonumber(halfH) or 85
+                                    if halfH < 10 or halfH > 200 then halfH = 85 end
+                                    local headW = V3 and V3(center.X, center.Y, center.Z + halfH) or {X=center.X,Y=center.Y,Z=center.Z+halfH}
+                                    local feetW = V3 and V3(center.X, center.Y, center.Z - halfH) or {X=center.X,Y=center.Y,Z=center.Z-halfH}
+                                    local hv = V2 and V2(0,0) or {X=0,Y=0}
+                                    local fv = V2 and V2(0,0) or {X=0,Y=0}
+                                    local ok1, r1 = pcall(function() return pc:ProjectWorldLocationToScreen(headW, hv, true) end)
+                                    local ok2, r2 = pcall(function() return pc:ProjectWorldLocationToScreen(feetW, fv, true) end)
+                                    if ok1 and r1 and (r1 == true or r1 == 1) then hX, hY = hv.X, hv.Y end
+                                    if ok2 and r2 and (r2 == true or r2 == 1) then fX, fY = fv.X, fv.Y end
+                                end
+                            end)
+
+                            _G.__ESP5_UI = _G.__ESP5_UI or {}
+                            local key = tostring(enemy.PlayerKey or enemy)
+                            local S = _G.__ESP5_UI[key]
+
+                            if not (hX and hY and fX and fY) then
+                                -- Off-screen → hide
+                                if S then
+                                    for _, f in ipairs({"BoxTop","BoxBottom","BoxLeft","BoxRight",
+                                        "C1H","C1V","C2H","C2V","C3H","C3V","C4H","C4V",
+                                        "HpBg","HpFill"}) do
+                                        if slua.isValid(S[f]) then
+                                            pcall(function() S[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+                                        end
+                                    end
+                                    S.Visible = false
+                                end
+                                return
+                            end
+
+                            -- Canvas transform (world→canvas)
+                            local scale = 1.0
+                            pcall(function()
+                                if WL and WL.GetViewportScale then
+                                    local s = WL.GetViewportScale(pc)
+                                    if s and s >= 0.01 and s <= 100 then scale = s end
+                                end
+                            end)
+                            local sx, sy = 1.0 / scale, 1.0 / scale
+                            hX, hY = hX * sx, hY * sy
+                            fX, fY = fX * sx, fY * sy
+
+                            -- Box dims
+                            local boxW = math.max(24, math.abs(fX - hX) + 20)
+                            local boxH = math.max(40, math.abs(fY - hY))
+                            local boxL = math.min(hX, fX) - boxW * 0.5
+                            local boxT = math.min(hY, fY)
+                            local cornerLen = math.max(8, math.min(18, boxH * 0.15))
+
+                            -- Lazy build
+                            if not (S and slua.isValid(S.BoxTop)) then
+                                _G.__ESP5_UI[key] = {}
+                                S = _G.__ESP5_UI[key]
+
+                                local function mkBorder(color)
+                                    local w = nil
+                                    pcall(function() w = CGame:NewObjectFromPath("/Script/UMG.Border", canvas) end)
+                                    if not (slua and slua.isValid and slua.isValid(w)) then return nil end
+                                    pcall(function()
+                                        w:SetBrushColor(color)
+                                        w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                                    end)
+                                    return w
+                                end
+                                local function mkSlot(widget, x, y, w, h, z)
+                                    local s = nil
+                                    pcall(function() s = canvas:AddChildToCanvas(widget) end)
+                                    if not s then return nil end
+                                    pcall(function()
+                                        s:SetAutoSize(false)
+                                        s:SetPosition(V2(x, y))
+                                        s:SetSize(V2(w, h))
+                                        s:SetZOrder(z)
+                                    end)
+                                    return s
+                                end
+
+                                -- 4 thin sides (very low opacity for premium glow)
+                                S.BoxTop    = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxTopSlot= S.BoxTop and mkSlot(S.BoxTop, 0, 0, 0, 0, 41)
+                                S.BoxBottom = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxBottomSlot = S.BoxBottom and mkSlot(S.BoxBottom, 0, 0, 0, 0, 41)
+                                S.BoxLeft   = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxLeftSlot= S.BoxLeft and mkSlot(S.BoxLeft, 0, 0, 0, 0, 41)
+                                S.BoxRight  = mkBorder(col(COL_MAIN.R, COL_MAIN.G, COL_MAIN.B, 0.30))
+                                S.BoxRightSlot = S.BoxRight and mkSlot(S.BoxRight, 0, 0, 0, 0, 41)
+
+                                -- 4 corner brackets (H + V each)
+                                S.C1H = mkBorder(COL_CORNER); S.C1HSlot = S.C1H and mkSlot(S.C1H, 0, 0, 0, 0, 42)
+                                S.C1V = mkBorder(COL_CORNER); S.C1VSlot = S.C1V and mkSlot(S.C1V, 0, 0, 0, 0, 42)
+                                S.C2H = mkBorder(COL_CORNER); S.C2HSlot = S.C2H and mkSlot(S.C2H, 0, 0, 0, 0, 42)
+                                S.C2V = mkBorder(COL_CORNER); S.C2VSlot = S.C2V and mkSlot(S.C2V, 0, 0, 0, 0, 42)
+                                S.C3H = mkBorder(COL_CORNER); S.C3HSlot = S.C3H and mkSlot(S.C3H, 0, 0, 0, 0, 42)
+                                S.C3V = mkBorder(COL_CORNER); S.C3VSlot = S.C3V and mkSlot(S.C3V, 0, 0, 0, 0, 42)
+                                S.C4H = mkBorder(COL_CORNER); S.C4HSlot = S.C4H and mkSlot(S.C4H, 0, 0, 0, 0, 42)
+                                S.C4V = mkBorder(COL_CORNER); S.C4VSlot = S.C4V and mkSlot(S.C4V, 0, 0, 0, 0, 42)
+
+                                -- HP bar under feet
+                                S.HpBg = mkBorder(col(0.05, 0.05, 0.08, 0.75))
+                                S.HpBgSlot = S.HpBg and mkSlot(S.HpBg, 0, 0, 0, 0, 43)
+                                S.HpFill = mkBorder(COL_HP_HIGH)
+                                S.HpFillSlot = S.HpFill and mkSlot(S.HpFill, 0, 0, 0, 0, 44)
+
+                                S.Visible = false
+                            end
+
+                            if not S then return end
+
+                            -- Update box geometry
+                            local function setPos(slot, x, y)
+                                if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(x, y)) end) end
+                            end
+                            local function setSize(slot, w, h)
+                                if slua.isValid(slot) then pcall(function() slot:SetSize(V2(w, h)) end) end
+                            end
+
+                            -- Top / bottom / left / right (thin 1px lines)
+                            setPos(S.BoxTopSlot, boxL, boxT); setSize(S.BoxTopSlot, boxW, 1)
+                            setPos(S.BoxBottomSlot, boxL, boxT + boxH); setSize(S.BoxBottomSlot, boxW, 1)
+                            setPos(S.BoxLeftSlot, boxL, boxT); setSize(S.BoxLeftSlot, 1, boxH)
+                            setPos(S.BoxRightSlot, boxL + boxW, boxT); setSize(S.BoxRightSlot, 1, boxH)
+
+                            -- Corner 1 (top-left)
+                            setPos(S.C1HSlot, boxL, boxT); setSize(S.C1HSlot, cornerLen, 2)
+                            setPos(S.C1VSlot, boxL, boxT); setSize(S.C1VSlot, 2, cornerLen)
+                            -- Corner 2 (top-right)
+                            setPos(S.C2HSlot, boxL + boxW - cornerLen, boxT); setSize(S.C2HSlot, cornerLen, 2)
+                            setPos(S.C2VSlot, boxL + boxW - 2, boxT); setSize(S.C2VSlot, 2, cornerLen)
+                            -- Corner 3 (bottom-left)
+                            setPos(S.C3HSlot, boxL, boxT + boxH - 2); setSize(S.C3HSlot, cornerLen, 2)
+                            setPos(S.C3VSlot, boxL, boxT + boxH - cornerLen); setSize(S.C3VSlot, 2, cornerLen)
+                            -- Corner 4 (bottom-right)
+                            setPos(S.C4HSlot, boxL + boxW - cornerLen, boxT + boxH - 2); setSize(S.C4HSlot, cornerLen, 2)
+                            setPos(S.C4VSlot, boxL + boxW - 2, boxT + boxH - cornerLen); setSize(S.C4VSlot, 2, cornerLen)
+
+                            -- HP bar (under box, 24px gap)
+                            local hp, maxHp = 100, 100
+                            pcall(function()
+                                hp = tonumber(enemy.Health) or tonumber(enemy:GetHealth()) or 100
+                                maxHp = tonumber(enemy.HealthMax) or tonumber(enemy:GetMaxHealth()) or 100
+                            end)
+                            local hpRatio = math.max(0, math.min(1, hp / math.max(1, maxHp)))
+                            local barW, barH = boxW, 4
+                            local barX = boxL
+                            local barY = boxT + boxH + 4
+                            setPos(S.HpBgSlot, barX, barY); setSize(S.HpBgSlot, barW, barH)
+                            setPos(S.HpFillSlot, barX, barY); setSize(S.HpFillSlot, barW * hpRatio, barH)
+
+                            -- HP color based on ratio
+                            local hpColor = COL_HP_HIGH
+                            if hpRatio < 0.30 then hpColor = COL_HP_LOW
+                            elseif hpRatio < 0.60 then hpColor = COL_HP_MID end
+                            if slua.isValid(S.HpFill) then
+                                pcall(function() S.HpFill:SetBrushColor(hpColor) end)
+                            end
+
+                            -- Show all
+                            if not S.Visible then
+                                for _, f in ipairs({"BoxTop","BoxBottom","BoxLeft","BoxRight",
+                                    "C1H","C1V","C2H","C2V","C3H","C3V","C4H","C4V",
+                                    "HpBg","HpFill"}) do
+                                    if slua.isValid(S[f]) then
+                                        pcall(function() S[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+                                    end
+                                end
+                                S.Visible = true
+                            end
+                        end)
+                    else
+                        -- Esp5 off — hide this enemy's box
+                        pcall(function()
+                            local U = _G.__ESP5_UI
+                            if not U then return end
+                            local key = tostring(enemy.PlayerKey or enemy)
+                            local S = U[key]
+                            if not S then return end
+                            for _, f in ipairs({"BoxTop","BoxBottom","BoxLeft","BoxRight",
+                                "C1H","C1V","C2H","C2V","C3H","C3V","C4H","C4V",
+                                "HpBg","HpFill"}) do
+                                if slua and slua.isValid and slua.isValid(S[f]) then
+                                    pcall(function() S[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
+                                end
+                            end
+                            S.Visible = false
                         end)
                     end
                     if showFrameUI then
