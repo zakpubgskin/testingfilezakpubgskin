@@ -4332,13 +4332,13 @@ local function ApplyColorBodyV2(enemy, pc, markData)
                 
                 -- 4. Wall/cover hit = hidden (RED)
                 if traceHit and hitResult and slua.isValid(hitResult.Actor) then
-    if hitResult.Actor ~= target then
-        hidden = true
+    if hitResult.Actor ~= enemy then
+        isHidden = true
     else
-        hidden = false
+        isHidden = false
     end
 else
-    hidden = true
+    isHidden = true
 end
                 
                 -- Fallback: agar trace fail ho jaye
