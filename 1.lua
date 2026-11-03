@@ -4603,17 +4603,18 @@ _G.AimTouch = function()
 
             -- VISIBILITY CHECK (cached 0.2s per enemy)
                         -- VISIBILITY CHECK (FIXED — head bone screen projection)
+                        -- VISIBILITY CHECK (FIXED — real line trace, cover block karega)
             if not skip and useVisCheck then
                 local tId = GetSafeEnemyKey(target)
                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
                 local cached = _G.AimTouchVisCache[tId]
                 local nowT = os.clock()
                 
-                if not cached or (nowT - (cached.t or 0)) > 0.15 then
-                    local hidden = false
+                if not cached or (nowT - (cached.t or 0)) > 0.1 then
+                    local hidden = true   -- DEFAULT HIDDEN (fail-safe)
                     
                     pcall(function()
-                        -- Head bone position
+                        -- 1. Head bone position
                         local headPos = nil
                         if type(target.GetBonePos) == "function" then
                             headPos = target:GetBonePos("head", {X=0,Y=0,Z=0})
@@ -4627,52 +4628,61 @@ _G.AimTouch = function()
                         end
                         if not headPos then return end
                         
-                        -- Screen pe project karo
+                        -- 2. Camera location
+                        local UGameplayStatics = import("GameplayStatics")
+                        local camMgr = UGameplayStatics.GetPlayerCameraManager(pc, 0)
+                        if not slua.isValid(camMgr) then return end
+                        local camLoc = camMgr:GetCameraLocation()
+                        if not camLoc then return end
+                        
+                        -- 3. Screen projection check (enemy screen pe hai?)
                         local FVector2D = import("Vector2D")
                         local screen = FVector2D()
                         local onScreen = false
                         pcall(function()
                             onScreen = pc:ProjectWorldLocationToScreen(headPos, screen, false)
                         end)
-                        
                         if not onScreen or screen.X <= 0 or screen.Y <= 0 then
                             hidden = true
                             return
                         end
                         
-                        -- LOS check (secondary)
-                        local los = true
+                        -- 4. REAL LINE TRACE — camera se head tak
+                        local KismetSystemLibrary = import("KismetSystemLibrary")
+                        local hitResult = import("HitResult")()
+                        
+                        -- Trace params: ignore self + ignore target
+                        local ignoreActors = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
+                        ignoreActors:Add(localPlayer)
+                        ignoreActors:Add(target)
+                        
+                        local traceHit = false
                         pcall(function()
-                            if type(pc.LineOfSightTo) == "function" then
-                                los = pc:LineOfSightTo(target)
-                            end
+                            traceHit = KismetSystemLibrary.LineTraceSingle(
+                                localPlayer,           -- WorldContext
+                                camLoc,                -- Start
+                                headPos,               -- End
+                                UEnums.ETraceTypeQuery.TraceTypeQuery1,  -- Visibility channel
+                                false,                 -- bTraceComplex
+                                ignoreActors,          -- ActorsToIgnore
+                                UEnums.EDrawDebugTrace.None,
+                                hitResult,             -- OutHit
+                                true                   -- bIgnoreSelf
+                            )
                         end)
                         
-                        if los == true then
-                            hidden = false
-                        else
-                            -- LOS false but head screen pe visible → visible maano
-                            local ui_util = require("client.common.ui_util")
-                            if ui_util then
-                                local vp = ui_util.GetViewportSize()
-                                if vp then
-                                    local cx = vp.X * 0.5
-                                    local cy = vp.Y * 0.5
-                                    local dx = screen.X - cx
-                                    local dy = screen.Y - cy
-                                    local dist = math.sqrt(dx*dx + dy*dy)
-                                    local threshold = (vp.X / 2.0) * 0.6
-                                    if dist <= threshold then
-                                        hidden = false
-                                    else
-                                        hidden = true
-                                    end
-                                else
-                                    hidden = false
-                                end
+                        -- 5. Agar wall/cover hit hua → hidden
+                        if traceHit and hitResult then
+                            local hitActor = hitResult.Actor
+                            -- Agar jo hit hua wo target NAHI hai → wall/cover hai → hidden
+                            if slua.isValid(hitActor) and hitActor ~= target then
+                                hidden = true
                             else
                                 hidden = false
                             end
+                        else
+                            -- Kuch hit nahi → clear line → visible
+                            hidden = false
                         end
                     end)
                     
