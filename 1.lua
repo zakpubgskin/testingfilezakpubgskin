@@ -2510,7 +2510,6 @@ _G.ApplyMagicBullet = function(weapon)
     local bodyMul = enabled and (tonumber(data.MagicBody) or 1.0) or 1.0
     local legsMul = enabled and (tonumber(data.MagicLegs) or 1.0) or 1.0
 
-    -- Collect the same entities the weapon-mod block already patches
     local entities = {}
     if Valid(weapon.ShootWeaponEntity_GEN_VARIABLE) then table.insert(entities, weapon.ShootWeaponEntity_GEN_VARIABLE) end
     if Valid(weapon.ShootWeaponEntity) then table.insert(entities, weapon.ShootWeaponEntity) end
@@ -2518,12 +2517,19 @@ _G.ApplyMagicBullet = function(weapon)
         table.insert(entities, weapon.ShootWeaponComponent.ShootWeaponEntityComponent)
     end
 
-    -- Feature off / sliders untouched -> restore and bail
+    -- All damage fields we try, in priority order
+    local damageFields = { "BaseDamage", "Damage", "DamageValue", "WeaponDamage", "BaseDamageValue" }
+
+    -- Feature off -> restore and bail
     if headMul == 1.0 and bodyMul == 1.0 and legsMul == 1.0 then
         for _, entity in ipairs(entities) do
             if entity.GTLMODMagicApplied and entity.OriginalMagicCached then
                 pcall(function()
-                    entity.BaseDamage = entity.OriginalMagicCached.BaseDamage
+                    for _, f in ipairs(damageFields) do
+                        if entity.OriginalMagicCached[f] ~= nil then
+                            entity[f] = entity.OriginalMagicCached[f]
+                        end
+                    end
                 end)
                 entity.GTLMODMagicApplied = false
             end
@@ -2536,12 +2542,28 @@ _G.ApplyMagicBullet = function(weapon)
     for _, entity in ipairs(entities) do
         pcall(function()
             if not entity.OriginalMagicCached then
-                entity.OriginalMagicCached = { BaseDamage = entity.BaseDamage }
+                entity.OriginalMagicCached = {}
+                for _, f in ipairs(damageFields) do
+                    local ok, val = pcall(function() return entity[f] end)
+                    if ok and type(val) == "number" and val > 0 then
+                        entity.OriginalMagicCached[f] = val
+                    end
+                end
             end
-            local base = tonumber(entity.OriginalMagicCached.BaseDamage) or 0
-            if base > 0 then
-                entity.BaseDamage = base * avg
+
+            -- Apply multiplier to whatever numeric damage field exists
+            for _, f in ipairs(damageFields) do
+                local base = entity.OriginalMagicCached[f]
+                if base and base > 0 then
+                    pcall(function() entity[f] = base * avg end)
+                end
             end
+
+            -- Extra per-part scale fields if present
+            pcall(function() if entity.HeadDamageScale ~= nil then entity.HeadDamageScale = headMul end end)
+            pcall(function() if entity.BodyDamageScale ~= nil then entity.BodyDamageScale = bodyMul end end)
+            pcall(function() if entity.LegDamageScale ~= nil then entity.LegDamageScale = legsMul end end)
+
             entity.GTLMODMagicApplied = true
         end)
     end
@@ -3924,9 +3946,19 @@ local function ApplyIpadViewFOV(localPlayer, pc)
     end)
     local isInVehicle = Valid(currentVehicle) or (localPlayer.bIsInVehicle == true)
 
-    local uTPPCam = localPlayer.ThirdPersonCameraComponent
+        local uTPPCam = localPlayer.ThirdPersonCameraComponent
     local uVehCam = localPlayer.VehicleCameraComponent
     local camMgr  = pc.PlayerCameraManager
+
+    -- Fallback: vehicle camera lives on the vehicle actor, not the pawn
+    if not Valid(uVehCam) and Valid(currentVehicle) then
+        pcall(function()
+            uVehCam = currentVehicle.VehicleCameraComponent
+                or currentVehicle.CameraComponent
+                or (type(currentVehicle.GetCameraComponent) == "function" and currentVehicle:GetCameraComponent())
+                or (type(currentVehicle.GetVehicleCamera) == "function" and currentVehicle:GetVehicleCamera())
+        end)
+    end
 
     -- ---------- 1. SCOPE / ADS ----------
     if isAiming then
