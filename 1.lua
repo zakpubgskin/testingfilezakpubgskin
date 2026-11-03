@@ -6151,7 +6151,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                     pcall(function() w:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
                                 end
                             end
-                            ensureVisible(U.OuterBorder)
+                                                        ensureVisible(U.OuterBorder)
                             ensureVisible(U.RedPanel)
                             ensureVisible(U.GreenPanel)
                             ensureVisible(U.Divider)
@@ -6161,7 +6161,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             ensureVisible(U.BotText)
                             U.Visible = true
                         end)
-                
+                    else
                         -- Esp7 OFF → hide
                         pcall(function()
                             local U = _G.__ESP7_UI
@@ -6176,7 +6176,6 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             U.Visible = false
                         end)
                     end
-                    else
                         -- Esp7 OFF → hide
                         pcall(function()
                             local U = _G.__ESP7_UI
