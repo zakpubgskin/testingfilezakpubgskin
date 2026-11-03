@@ -5100,10 +5100,11 @@ local function MainLoop()
         markData.ColorNewApplied = false
 
         local LinearColorClass = import("LinearColor") or _G.FLinearColor
-        local c_vis = LinearColorClass and LinearColorClass(0, 100, 0, 1) or {R=0, G=100, B=0, A=1}
-        local c_occ = LinearColorClass and LinearColorClass(100, 0, 0, 1) or {R=100, G=0, B=0, A=1}
-        local c_bVis = LinearColorClass and LinearColorClass(49, 48, 0, 100) or {R=49, G=48, B=0, A=100}
-        local c_bOcc = LinearColorClass and LinearColorClass(9, 1.5, 45, 100) or {R=9, G=1.5, B=45, A=100}
+-- PURE colors, 0.0-1.0 range (NO WHITENESS)
+local c_vis  = LinearColorClass and LinearColorClass(0.0, 1.0, 0.0, 1.0) or {R=0.0, G=1.0, B=0.0, A=1.0}
+local c_occ  = LinearColorClass and LinearColorClass(1.0, 0.0, 0.0, 1.0) or {R=1.0, G=0.0, B=0.0, A=1.0}
+local c_bVis = LinearColorClass and LinearColorClass(0.0, 1.0, 0.0, 1.0) or {R=0.0, G=1.0, B=0.0, A=1.0}
+local c_bOcc = LinearColorClass and LinearColorClass(1.0, 0.0, 0.0, 1.0) or {R=1.0, G=0.0, B=0.0, A=1.0}
 
         local visColor = isBot and c_bVis or c_vis
         local occColor = isBot and c_bOcc or c_occ
