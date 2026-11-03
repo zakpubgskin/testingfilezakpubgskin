@@ -4331,16 +4331,15 @@ local function ApplyColorBodyV2(enemy, pc, markData)
                 end)
                 
                 -- 4. Wall/cover hit = hidden (RED)
-                if traceHit and hitResult then
-                    local hitActor = hitResult.Actor
-                    if slua.isValid(hitActor) and hitActor ~= enemy then
-                        isHidden = true    -- wall/cover beech mein = RED
-                    else
-                        isHidden = false   -- clear line = GREEN
-                    end
-                else
-                    isHidden = false       -- kuch block nahi = GREEN
-                end
+                if traceHit and hitResult and slua.isValid(hitResult.Actor) then
+    if hitResult.Actor ~= target then
+        hidden = true
+    else
+        hidden = false
+    end
+else
+    hidden = true
+end
                 
                 -- Fallback: agar trace fail ho jaye
                 if not traceHit then
