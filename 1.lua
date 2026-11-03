@@ -5606,7 +5606,7 @@ end
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
-                   if _G.GTLMODConfig.Esp7 then
+                    if _G.GTLMODConfig.Esp7 then
                         pcall(function()
                             -- === COUNT ENEMIES (existing logic) ===
                             local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
@@ -6012,7 +6012,6 @@ end
                                 pName = enemy.PlayerName or enemy.PlayerNamePublic or "Enemy"
                             end
 
-                            -- Refresh visibility check every frame
                             local bIsVisible = false
                             if pc and type(pc.LineOfSightTo) == "function" then
                                 bIsVisible = pc:LineOfSightTo(enemy)
@@ -6020,7 +6019,7 @@ end
 
                             local textColor = {R=255, G=255, B=255, A=255}
                             if isKnock then
-                                textColor = {R=0, G=0, B=255, A=255}      -- Blue
+                                textColor = {R=0, G=0, B=255, A=255}
                             else
                                 textColor = bIsVisible and C_GREEN or C_RED
                             end
@@ -6050,7 +6049,7 @@ end
                             if distM > 400 then return end
 
                             local distMeters = math.floor(distM + 0.5)
-                            local rangeColor = {R=255, G=255, B=255, A=255} -- white
+                            local rangeColor = {R=255, G=255, B=255, A=255}
 
                             hud:AddDebugText(string.format("%.0fm", distMeters), enemy, 0.3,
                                              {X=15, Y=15, Z=-15}, {X=15, Y=15, Z=-15},
@@ -6178,8 +6177,8 @@ end
             end
         end
 
-        -- ESP TYPE 7: ENEMY COUNTER
-        if _G.GTLMODConfig.Esp7 then
+        -- ESP TYPE 7 old text render — DISABLED (upgraded counter is inside per-enemy loop)
+        if false then
             pcall(function()
                 local MyHUD = Cached_MyHUD
                 if Valid(MyHUD) then
