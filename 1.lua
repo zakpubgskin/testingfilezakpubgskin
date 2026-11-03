@@ -2304,7 +2304,16 @@ local SCALE_COLOR_V2 = {R=3, G=3, B=0, A=0}
 -- Does NOT touch any ID, mark, or config.
 -- ==========================================
 local function _PremiumUI()
-    if _G.__PREMIUM_UI_OK then return _G.__PREMIUM_UI end
+    -- Cache valid only if canvas still alive (naya match = naya canvas)
+    if _G.__PREMIUM_UI_OK and _G.__PREMIUM_UI then
+        local c = _G.__PREMIUM_UI.Canvas
+        if slua and slua.isValid and slua.isValid(c) then
+            return _G.__PREMIUM_UI
+        end
+        -- Canvas died (map reload) → clear cache, rebuild below
+        _G.__PREMIUM_UI = nil
+        _G.__PREMIUM_UI_OK = false
+    end
 
     local root = nil
     pcall(function()
@@ -5726,49 +5735,88 @@ end
         local C_GREY   = col(0.55, 0.55, 0.60, 1)
         local C_GOLD   = col(1.00, 0.84, 0.30, 1.0)
 
-        _G.__ESP7_UI = _G.__ESP7_UI or {}
+                _G.__ESP7_UI = _G.__ESP7_UI or {}
         local U = _G.__ESP7_UI
 
-        U.W, U.H = 320, 52
+        -- ══════════════════════════════════════════════════════
+        -- PREMIUM COUNTER DIMENSIONS (bigger + cleaner)
+        -- ══════════════════════════════════════════════════════
+        U.W, U.H = 360, 64           -- wider, taller = more premium
         U.Half = U.W * 0.5
-        U.Pad  = 2
+        U.Pad  = 3                    -- thicker inner padding
+        U.Corner = 8                  -- gold corner length
 
-        if not (slua.isValid(U.Base)) then
-            U.RedGlow = P.mkBorder(C_RED_G);    U.RedGlowSlot   = U.RedGlow   and P.mkSlot(U.RedGlow,   0, 0, U.Half - 2, U.H, 44)
-            U.GreenGlow = P.mkBorder(C_GRN_G);  U.GreenGlowSlot = U.GreenGlow and P.mkSlot(U.GreenGlow, U.Half + 2, 0, U.Half - 2, U.H, 44)
-            U.Base = P.mkBorder(C_BASE);        U.BaseSlot = U.Base and P.mkSlot(U.Base, 0, 0, U.W, U.H, 45)
+        local needRebuild = not (slua.isValid(U.Base))
+        if not needRebuild and U.CanvasRef and not slua.isValid(U.CanvasRef) then
+            needRebuild = true
+        end
 
-            U.RedTop = P.mkBorder(C_RED_BT);    U.RedTopSlot = U.RedTop and P.mkSlot(U.RedTop, U.Pad, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
-            U.RedBot = P.mkBorder(C_RED_BB);    U.RedBotSlot = U.RedBot and P.mkSlot(U.RedBot, U.Pad, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
-            U.GreenTop = P.mkBorder(C_GRN_BT);  U.GreenTopSlot = U.GreenTop and P.mkSlot(U.GreenTop, U.Half + 1, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
-            U.GreenBot = P.mkBorder(C_GRN_BB);  U.GreenBotSlot = U.GreenBot and P.mkSlot(U.GreenBot, U.Half + 1, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
+        if needRebuild then
+            U.Base = nil
+            U.CanvasRef = P.Canvas
 
-            U.RedBorderTop  = P.mkBorder(C_RED); U.RedBorderTopSlot  = U.RedBorderTop  and P.mkSlot(U.RedBorderTop,  U.Pad, U.Pad, U.Half - U.Pad - 1, 1, 47)
-            U.RedBorderBot  = P.mkBorder(C_RED); U.RedBorderBotSlot  = U.RedBorderBot  and P.mkSlot(U.RedBorderBot,  U.Pad, U.H - U.Pad - 1, U.Half - U.Pad - 1, 1, 47)
-            U.RedBorderLeft = P.mkBorder(C_RED); U.RedBorderLeftSlot = U.RedBorderLeft and P.mkSlot(U.RedBorderLeft, U.Pad, U.Pad, 1, U.H - U.Pad * 2, 47)
+            -- ── Background panel (dark obsidian with gradient) ──
+            U.Base = P.mkBorder(C_BASE)
+            U.BaseSlot = U.Base and P.mkSlot(U.Base, 0, 0, U.W, U.H, 45)
 
-            U.GreenBorderTop   = P.mkBorder(C_GRN); U.GreenBorderTopSlot   = U.GreenBorderTop   and P.mkSlot(U.GreenBorderTop,   U.Half + 1, U.Pad, U.Half - U.Pad - 1, 1, 47)
-            U.GreenBorderBot   = P.mkBorder(C_GRN); U.GreenBorderBotSlot   = U.GreenBorderBot   and P.mkSlot(U.GreenBorderBot,   U.Half + 1, U.H - U.Pad - 1, U.Half - U.Pad - 1, 1, 47)
-            U.GreenBorderRight = P.mkBorder(C_GRN); U.GreenBorderRightSlot = U.GreenBorderRight and P.mkSlot(U.GreenBorderRight, U.W - U.Pad - 1, U.Pad, 1, U.H - U.Pad * 2, 47)
+            -- ── Red side gradient (top/bottom strips) ──
+            U.RedTop = P.mkBorder(C_RED_BT)
+            U.RedTopSlot = U.RedTop and P.mkSlot(U.RedTop, U.Pad, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
+            U.RedBot = P.mkBorder(C_RED_BB)
+            U.RedBotSlot = U.RedBot and P.mkSlot(U.RedBot, U.Pad, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
 
-            U.DividerGlow = P.mkBorder(col(1, 1, 1, 0.35)); U.DividerGlowSlot = U.DividerGlow and P.mkSlot(U.DividerGlow, U.Half - 2, 4, 4, U.H - 8, 48)
-            U.Divider     = P.mkBorder(col(0.85, 0.85, 0.95, 0.95)); U.DividerSlot = U.Divider and P.mkSlot(U.Divider, U.Half - 1, 4, 2, U.H - 8, 49)
+            -- ── Green side gradient (top/bottom strips) ──
+            U.GreenTop = P.mkBorder(C_GRN_BT)
+            U.GreenTopSlot = U.GreenTop and P.mkSlot(U.GreenTop, U.Half + 1, U.Pad, U.Half - U.Pad - 1, U.H * 0.55, 46)
+            U.GreenBot = P.mkBorder(C_GRN_BB)
+            U.GreenBotSlot = U.GreenBot and P.mkSlot(U.GreenBot, U.Half + 1, U.H * 0.55, U.Half - U.Pad - 1, U.H * 0.45 - U.Pad, 46)
 
-            local A = 7
-            U.RedCornerTL   = P.mkBorder(C_GOLD); U.RedCornerTLSlot   = U.RedCornerTL   and P.mkSlot(U.RedCornerTL,   U.Pad, U.Pad, A, 2, 50)
-            U.RedCornerTLV  = P.mkBorder(C_GOLD); U.RedCornerTLVSlot  = U.RedCornerTLV  and P.mkSlot(U.RedCornerTLV,  U.Pad, U.Pad, 2, A, 50)
-            U.GreenCornerTR = P.mkBorder(C_GOLD); U.GreenCornerTRSlot = U.GreenCornerTR and P.mkSlot(U.GreenCornerTR, U.W - U.Pad - A, U.Pad, A, 2, 50)
-            U.GreenCornerTRV= P.mkBorder(C_GOLD); U.GreenCornerTRVSlot= U.GreenCornerTRV and P.mkSlot(U.GreenCornerTRV,U.W - U.Pad - 2, U.Pad, 2, A, 50)
-            U.RedCornerBL   = P.mkBorder(C_GOLD); U.RedCornerBLSlot   = U.RedCornerBL   and P.mkSlot(U.RedCornerBL,   U.Pad, U.H - U.Pad - 2, A, 2, 50)
-            U.RedCornerBLV  = P.mkBorder(C_GOLD); U.RedCornerBLVSlot  = U.RedCornerBLV  and P.mkSlot(U.RedCornerBLV,  U.Pad, U.H - U.Pad - A, 2, A, 50)
-            U.GreenCornerBR = P.mkBorder(C_GOLD); U.GreenCornerBRSlot = U.GreenCornerBR and P.mkSlot(U.GreenCornerBR, U.W - U.Pad - A, U.H - U.Pad - 2, A, 2, 50)
-            U.GreenCornerBRV= P.mkBorder(C_GOLD); U.GreenCornerBRVSlot= U.GreenCornerBRV and P.mkSlot(U.GreenCornerBRV,U.W - U.Pad - 2, U.H - U.Pad - A, 2, A, 50)
+            -- ── Neon borders (red side) ──
+            U.RedBorderTop  = P.mkBorder(C_RED)
+            U.RedBorderTopSlot  = P.mkSlot(U.RedBorderTop,  U.Pad, U.Pad, U.Half - U.Pad - 1, 2, 47)
+            U.RedBorderBot  = P.mkBorder(C_RED)
+            U.RedBorderBotSlot  = P.mkSlot(U.RedBorderBot,  U.Pad, U.H - U.Pad - 2, U.Half - U.Pad - 1, 2, 47)
+            U.RedBorderLeft = P.mkBorder(C_RED)
+            U.RedBorderLeftSlot = P.mkSlot(U.RedBorderLeft, U.Pad, U.Pad, 2, U.H - U.Pad * 2, 47)
 
-            U.RealIcon = P.mkText("◆", C_RED, 14); U.RealIconSlot = U.RealIcon and P.mkSlot(U.RealIcon, U.Pad + 6, 0, 18, U.H, 53)
-            U.BotIcon  = P.mkText("◆", C_GRN, 14); U.BotIconSlot  = U.BotIcon  and P.mkSlot(U.BotIcon,  U.Half + 6, 0, 18, U.H, 53)
+            -- ── Neon borders (green side) ──
+            U.GreenBorderTop   = P.mkBorder(C_GRN)
+            U.GreenBorderTopSlot   = P.mkSlot(U.GreenBorderTop,   U.Half + 1, U.Pad, U.Half - U.Pad - 1, 2, 47)
+            U.GreenBorderBot   = P.mkBorder(C_GRN)
+            U.GreenBorderBotSlot   = P.mkSlot(U.GreenBorderBot,   U.Half + 1, U.H - U.Pad - 2, U.Half - U.Pad - 1, 2, 47)
+            U.GreenBorderRight = P.mkBorder(C_GRN)
+            U.GreenBorderRightSlot = P.mkSlot(U.GreenBorderRight, U.W - U.Pad - 2, U.Pad, 2, U.H - U.Pad * 2, 47)
 
-            U.RealLabel = P.mkText("REAL  0", C_WHITE, 19); U.RealLabelSlot = U.RealLabel and P.mkSlot(U.RealLabel, U.Pad + 24, 0, U.Half - U.Pad - 26, U.H, 52)
-            U.BotLabel  = P.mkText("BOT  0",  C_WHITE, 19); U.BotLabelSlot  = U.BotLabel  and P.mkSlot(U.BotLabel,  U.Half + 25, 0, U.Half - U.Pad - 26, U.H, 52)
+            -- ── Center divider (glow + solid) ──
+            U.DividerGlow = P.mkBorder(col(1, 1, 1, 0.35))
+            U.DividerGlowSlot = P.mkSlot(U.DividerGlow, U.Half - 3, 6, 6, U.H - 12, 48)
+            U.Divider     = P.mkBorder(col(0.85, 0.85, 0.95, 0.95))
+            U.DividerSlot = P.mkSlot(U.Divider, U.Half - 1, 6, 2, U.H - 12, 49)
+
+            -- ── Gold corner brackets (L-shapes, all 4 corners) ──
+            local A = U.Corner
+            U.RedCornerTL    = P.mkBorder(C_GOLD); U.RedCornerTLSlot    = P.mkSlot(U.RedCornerTL,    U.Pad, U.Pad, A, 3, 50)
+            U.RedCornerTLV   = P.mkBorder(C_GOLD); U.RedCornerTLVSlot   = P.mkSlot(U.RedCornerTLV,   U.Pad, U.Pad, 3, A, 50)
+            U.GreenCornerTR  = P.mkBorder(C_GOLD); U.GreenCornerTRSlot  = P.mkSlot(U.GreenCornerTR,  U.W - U.Pad - A, U.Pad, A, 3, 50)
+            U.GreenCornerTRV = P.mkBorder(C_GOLD); U.GreenCornerTRVSlot = P.mkSlot(U.GreenCornerTRV, U.W - U.Pad - 3, U.Pad, 3, A, 50)
+            U.RedCornerBL    = P.mkBorder(C_GOLD); U.RedCornerBLSlot    = P.mkSlot(U.RedCornerBL,    U.Pad, U.H - U.Pad - 3, A, 3, 50)
+            U.RedCornerBLV   = P.mkBorder(C_GOLD); U.RedCornerBLVSlot   = P.mkSlot(U.RedCornerBLV,   U.Pad, U.H - U.Pad - A, 3, A, 50)
+            U.GreenCornerBR  = P.mkBorder(C_GOLD); U.GreenCornerBRSlot  = P.mkSlot(U.GreenCornerBR,  U.W - U.Pad - A, U.H - U.Pad - 3, A, 3, 50)
+            U.GreenCornerBRV = P.mkBorder(C_GOLD); U.GreenCornerBRVSlot = P.mkSlot(U.GreenCornerBRV, U.W - U.Pad - 3, U.H - U.Pad - A, 3, A, 50)
+
+            -- ── Icons (LEFT of each side, vertically centered) ──
+            U.RealIcon = P.mkText("◆", C_RED, 16)
+            U.RealIconSlot = U.RealIcon and P.mkSlot(U.RealIcon, U.Pad + 10, 0, 24, U.H, 53)
+            U.BotIcon  = P.mkText("◆", C_GRN, 16)
+            U.BotIconSlot  = U.BotIcon  and P.mkSlot(U.BotIcon,  U.Half + 10, 0, 24, U.H, 53)
+
+            -- ── Labels (RIGHT of icons, properly centered) ──
+            U.RealLabel = P.mkText("REAL 0", C_WHITE, 22, 1)
+            U.RealLabelSlot = U.RealLabel and P.mkSlot(U.RealLabel,
+                U.Pad + 40, 0, U.Half - U.Pad - 46, U.H, 52)
+            U.BotLabel  = P.mkText("BOT 0",  C_WHITE, 22, 1)
+            U.BotLabelSlot  = U.BotLabel  and P.mkSlot(U.BotLabel,
+                U.Half + 40, 0, U.Half - U.Pad - 46, U.H, 52)
 
             U.LastReal, U.LastBot = -1, -1
             U.LastX, U.LastY = nil, nil
@@ -5777,20 +5825,23 @@ end
             U.LastTick = os.clock()
         end
 
+        -- ── Update labels (text change only) ──
         if U.LastReal ~= rCount and slua.isValid(U.RealLabel) then
-            pcall(function() U.RealLabel:SetText(string.format("REAL  %d", rCount)) end)
+            pcall(function() U.RealLabel:SetText(string.format("REAL %d", rCount)) end)
             U.LastReal = rCount
         end
         if U.LastBot ~= aCount and slua.isValid(U.BotLabel) then
-            pcall(function() U.BotLabel:SetText(string.format("BOT  %d", aCount)) end)
+            pcall(function() U.BotLabel:SetText(string.format("BOT %d", aCount)) end)
             U.LastBot = aCount
         end
 
+        -- ── Pulse animation ──
         local nowT = os.clock()
         local dt = nowT - (U.LastTick or nowT); U.LastTick = nowT
         U.PulseClock = (U.PulseClock or 0) + dt
         local pulse = 0.5 + 0.5 * math.sin(U.PulseClock * 3.0)
 
+        -- ── Label colors (bright when active, dim when empty) ──
         if slua.isValid(U.RealLabel) then
             pcall(function() U.RealLabel:SetColorAndOpacity(rCount > 0 and C_WHITE or C_GREY) end)
         end
@@ -5798,6 +5849,7 @@ end
             pcall(function() U.BotLabel:SetColorAndOpacity(aCount > 0 and C_WHITE or C_GREY) end)
         end
 
+        -- ── Neon pulse borders ──
         if slua.isValid(U.RedBorderTop) then
             local a = (rCount > 0) and (0.65 + pulse * 0.35) or 0.20
             pcall(function() U.RedBorderTop:SetBrushColor(col(1.00, 0.20, 0.35, a)) end)
@@ -5811,6 +5863,7 @@ end
             if slua.isValid(U.GreenBorderRight) then pcall(function() U.GreenBorderRight:SetBrushColor(col(0.20, 1.00, 0.55, a)) end) end
         end
 
+        -- ── Icon pulse ──
         if slua.isValid(U.RealIcon) then
             local a = (rCount > 0) and (0.7 + pulse * 0.3) or 0.25
             pcall(function() U.RealIcon:SetColorAndOpacity(col(1.00, 0.20, 0.35, a)) end)
@@ -5820,6 +5873,7 @@ end
             pcall(function() U.BotIcon:SetColorAndOpacity(col(0.20, 1.00, 0.55, a)) end)
         end
 
+        -- ── Position (top-center) ──
         local vw = nil
         pcall(function()
             local WL = import("WidgetLayoutLibrary")
@@ -5846,38 +5900,37 @@ end
 
         if U.LastX ~= x or U.LastY ~= y then
             local function sp(slot, px, py) if slua.isValid(slot) then pcall(function() slot:SetPosition(V2(px, py)) end) end end
-            sp(U.RedGlowSlot, x, y)
-            sp(U.GreenGlowSlot, x + U.Half + 2, y)
             sp(U.BaseSlot, x, y)
             sp(U.RedTopSlot, x + U.Pad, y + U.Pad)
             sp(U.RedBotSlot, x + U.Pad, y + U.H * 0.55)
             sp(U.GreenTopSlot, x + U.Half + 1, y + U.Pad)
             sp(U.GreenBotSlot, x + U.Half + 1, y + U.H * 0.55)
             sp(U.RedBorderTopSlot, x + U.Pad, y + U.Pad)
-            sp(U.RedBorderBotSlot, x + U.Pad, y + U.H - U.Pad - 1)
+            sp(U.RedBorderBotSlot, x + U.Pad, y + U.H - U.Pad - 2)
             sp(U.RedBorderLeftSlot, x + U.Pad, y + U.Pad)
             sp(U.GreenBorderTopSlot, x + U.Half + 1, y + U.Pad)
-            sp(U.GreenBorderBotSlot, x + U.Half + 1, y + U.H - U.Pad - 1)
-            sp(U.GreenBorderRightSlot, x + U.W - U.Pad - 1, y + U.Pad)
-            sp(U.DividerGlowSlot, x + U.Half - 2, y + 4)
-            sp(U.DividerSlot, x + U.Half - 1, y + 4)
+            sp(U.GreenBorderBotSlot, x + U.Half + 1, y + U.H - U.Pad - 2)
+            sp(U.GreenBorderRightSlot, x + U.W - U.Pad - 2, y + U.Pad)
+            sp(U.DividerGlowSlot, x + U.Half - 3, y + 6)
+            sp(U.DividerSlot, x + U.Half - 1, y + 6)
             sp(U.RedCornerTLSlot, x + U.Pad, y + U.Pad)
             sp(U.RedCornerTLVSlot, x + U.Pad, y + U.Pad)
-            sp(U.GreenCornerTRSlot, x + U.W - U.Pad - 7, y + U.Pad)
-            sp(U.GreenCornerTRVSlot, x + U.W - U.Pad - 2, y + U.Pad)
-            sp(U.RedCornerBLSlot, x + U.Pad, y + U.H - U.Pad - 2)
-            sp(U.RedCornerBLVSlot, x + U.Pad, y + U.H - U.Pad - 7)
-            sp(U.GreenCornerBRSlot, x + U.W - U.Pad - 7, y + U.H - U.Pad - 2)
-            sp(U.GreenCornerBRVSlot, x + U.W - U.Pad - 2, y + U.H - U.Pad - 7)
-            sp(U.RealLabelSlot, x + U.Pad + 24, y)
-            sp(U.BotLabelSlot,  x + U.Half + 25, y)
-            sp(U.RealIconSlot,  x + U.Pad + 6, y)
-            sp(U.BotIconSlot,   x + U.Half + 6, y)
+            sp(U.GreenCornerTRSlot, x + U.W - U.Pad - U.Corner, y + U.Pad)
+            sp(U.GreenCornerTRVSlot, x + U.W - U.Pad - 3, y + U.Pad)
+            sp(U.RedCornerBLSlot, x + U.Pad, y + U.H - U.Pad - 3)
+            sp(U.RedCornerBLVSlot, x + U.Pad, y + U.H - U.Pad - U.Corner)
+            sp(U.GreenCornerBRSlot, x + U.W - U.Pad - U.Corner, y + U.H - U.Pad - 3)
+            sp(U.GreenCornerBRVSlot, x + U.W - U.Pad - 3, y + U.H - U.Pad - U.Corner)
+            sp(U.RealIconSlot,  x + U.Pad + 10, y)
+            sp(U.BotIconSlot,   x + U.Half + 10, y)
+            sp(U.RealLabelSlot, x + U.Pad + 40, y)
+            sp(U.BotLabelSlot,  x + U.Half + 40, y)
             U.LastX, U.LastY = x, y
         end
 
-        if not U.Visible then
-            for _, f in ipairs({"RedGlow","GreenGlow","Base","RedTop","RedBot","GreenTop","GreenBot",
+        -- ── Show ──
+                if not U.Visible then
+            for _, f in ipairs({"Base","RedTop","RedBot","GreenTop","GreenBot",
                 "RedBorderTop","RedBorderBot","RedBorderLeft","GreenBorderTop","GreenBorderBot","GreenBorderRight",
                 "DividerGlow","Divider",
                 "RedCornerTL","RedCornerTLV","GreenCornerTR","GreenCornerTRV",
