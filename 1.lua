@@ -4278,60 +4278,22 @@ local function ApplyColorBodyV2(enemy, pc, markData)
         -- VISIBILITY CHECK (REAL LINE TRACE)
         -- Wall ke peeche = RED, saamne = GREEN
         -- ==========================================
-        local curTime = os.clock()
+                local curTime = os.clock()
         if markData.LastVisCheckTime == nil or (curTime - markData.LastVisCheckTime) > 0.1 then
             markData.LastVisCheckTime = curTime
             local isHidden = true   -- default hidden (fail-safe)
             
             pcall(function()
-                if not Valid(pc) then return end
-                
-                -- 1. Head bone position
-                local headPos = nil
-                if type(enemy.GetBonePos) == "function" then
-                    headPos = enemy:GetBonePos("head", {X=0,Y=0,Z=0})
-                end
-                if not headPos and type(enemy.GetSocketLocation) == "function" then
-                    headPos = enemy:GetSocketLocation("head")
-                end
-                if not headPos then
-                    headPos = enemy:K2_GetActorLocation()
-                    if headPos then headPos.Z = headPos.Z + 70 end
-                end
-                if not headPos then return end
-                
-                -- 2. Camera location
-                local UGameplayStatics = import("GameplayStatics")
-                local camMgr = UGameplayStatics.GetPlayerCameraManager(pc, 0)
-                if not slua.isValid(camMgr) then return end
-                local camLoc = camMgr:GetCameraLocation()
-                if not camLoc then return end
-                
-                -- 3. REAL LINE TRACE — camera se head tak
-                local KismetSystemLibrary = import("KismetSystemLibrary")
-                local hitResult = import("HitResult")()
-                
-                local ignoreActors = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
-                ignoreActors:Add(localPlayer)
-                ignoreActors:Add(enemy)
-                
+                ...
                 local traceHit = false
                 pcall(function()
                     traceHit = KismetSystemLibrary.LineTraceSingle(
-                        localplayer,
-                        camLoc,
-                        headPos,
-                        UEnums.ETraceTypeQuery.TraceTypeQuery1,
-                        false,
-                        ignoreActors,
-                        UEnums.EDrawDebugTrace.None,
-                        hitResult,
-                        true
+                        localplayer,        -- ← purana ghalat
+                        ...
                     )
                 end)
                 
-                -- 4. Wall/cover hit = hidden (RED)
-                               if traceHit and hitResult and slua.isValid(hitResult.Actor) then
+                if traceHit and hitResult and slua.isValid(hitResult.Actor) then
                     if hitResult.Actor ~= enemy then
                         isHidden = true
                     else
@@ -4754,7 +4716,7 @@ _G.AimTouch = function()
 ignoreActors:Add(player)
 ignoreActors:Add(target)
                         
-                        local traceHit = false
+                                                local traceHit = false
                         pcall(function()
                             traceHit = KismetSystemLibrary.LineTraceSingle(
                                 player,           -- WorldContext
@@ -4768,9 +4730,9 @@ ignoreActors:Add(target)
                                 true                   -- bIgnoreSelf
                             )
                         end)
-                        
+
                         -- 5. Agar wall/cover hit hua → hidden
-                                                                      if traceHit and hitResult and slua.isValid(hitResult.Actor) then
+                        if traceHit and hitResult and slua.isValid(hitResult.Actor) then
                             if hitResult.Actor ~= target then
                                 hidden = true
                             else
@@ -4779,12 +4741,12 @@ ignoreActors:Add(target)
                         else
                             hidden = true
                         end
-                    end)
-                    
+                    end)  -- pcall ka end
+
                     cached = { hidden = hidden, t = nowT }
                     _G.AimTouchVisCache[tId] = cached
                 end
-                
+
                 if cached and cached.hidden then skip = true end
             end
 
