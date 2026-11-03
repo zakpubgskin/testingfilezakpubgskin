@@ -4736,8 +4736,8 @@ _G.AimTouch = function()
                         
                         -- Trace params: ignore self + ignore target
                         local ignoreActors = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
-                        ignoreActors:Add(localPlayer)
-                        ignoreActors:Add(target)
+ignoreActors:Add(player)
+ignoreActors:Add(target)
                         
                         local traceHit = false
                         pcall(function()
