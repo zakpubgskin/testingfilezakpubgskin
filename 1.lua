@@ -6004,7 +6004,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 end
 
                                 -- Dimensions
-                                U.W, U.H = 280, 40
+                                U.W, U.H = 280, 46
                                 U.Half = U.W * 0.5
 
                                 -- === OUTER DARK BORDER (full frame) ===
@@ -6031,21 +6031,21 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 U.GreenBorderTop = mkBorder(COL_GREEN_BORDER)
                                 U.GreenBorderTopSlot = U.GreenBorderTop and mkSlot(U.GreenBorderTop, U.Half + 1, 2, U.Half - 3, 2, 58)
 
-                                -- === LABEL "REAL" (small, top-left) ===
-                                U.RealLabel = mkText("REAL", COL_RED_TEXT, 11)
+                                                                -- === LABEL "REAL" (top-left, inside box) ===
+                                U.RealLabel = mkText("REAL", COL_RED_TEXT, 10)
                                 U.RealLabelSlot = U.RealLabel and mkSlot(U.RealLabel, 4, 4, U.Half - 8, 12, 60)
 
-                                -- === COUNT "5" (large, center-left) ===
-                                U.RealCount = mkText("0", COL_RED_TEXT, 22)
-                                U.RealCountSlot = U.RealCount and mkSlot(U.RealCount, 4, 15, U.Half - 8, 24, 60)
+                                -- === COUNT "5" (center-left, inside box, big) ===
+                                U.RealCount = mkText("0", COL_RED_TEXT, 20)
+                                U.RealCountSlot = U.RealCount and mkSlot(U.RealCount, 4, 16, U.Half - 8, 20, 60)
 
-                                -- === LABEL "BOT" (small, top-right) ===
-                                U.BotLabel = mkText("BOT", COL_GREEN_TEXT, 11)
+                                -- === LABEL "BOT" (top-right, inside box) ===
+                                U.BotLabel = mkText("BOT", COL_GREEN_TEXT, 10)
                                 U.BotLabelSlot = U.BotLabel and mkSlot(U.BotLabel, U.Half + 3, 4, U.Half - 8, 12, 60)
 
-                                -- === COUNT "3" (large, center-right) ===
-                                U.BotCount = mkText("0", COL_GREEN_TEXT, 22)
-                                U.BotCountSlot = U.BotCount and mkSlot(U.BotCount, U.Half + 3, 15, U.Half - 8, 24, 60)
+                                -- === COUNT "3" (center-right, inside box, big) ===
+                                U.BotCount = mkText("0", COL_GREEN_TEXT, 20)
+                                U.BotCountSlot = U.BotCount and mkSlot(U.BotCount, U.Half + 3, 16, U.Half - 8, 20, 60)
 
                                 U.LastReal, U.LastBot = -1, -1
                                 U.LastX, U.LastY = nil, nil
@@ -6125,9 +6125,9 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 setPos(U.DividerSlot, x + U.Half - 1, y + 4)
                                 setPos(U.RedBorderTopSlot, x + 2, y + 2)
                                 setPos(U.GreenBorderTopSlot, x + U.Half + 1, y + 2)
-                                setPos(U.RealLabelSlot, x + 4, y + 4)
+                                                              setPos(U.RealLabelSlot, x + 4, y + 3)
                                 setPos(U.RealCountSlot, x + 4, y + 15)
-                                setPos(U.BotLabelSlot, x + U.Half + 3, y + 4)
+                                setPos(U.BotLabelSlot, x + U.Half + 3, y + 3)
                                 setPos(U.BotCountSlot, x + U.Half + 3, y + 15)
                                 U.LastX, U.LastY = x, y
                             end
