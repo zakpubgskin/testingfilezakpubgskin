@@ -5127,10 +5127,10 @@ local c_bOcc = LinearColorClass and LinearColorClass(1.0, 0.0, 0.0, 1.0) or {R=1
                         mesh:SetIdeaOutlineOcclusionHighlight(true)
                         mesh:OverrideIdeaOutlineColor(visColor)
                         mesh:SetIdeaOutlineOcclusionColor(occColor)
-                        mesh:OverrideIdeaOutlineThickness(20.0)
+                        mesh:OverrideIdeaOutlineThickness(3.0)
                         mesh:SetIdeaOverrideOutlineAndOcclusion(true)
                         mesh:SetRenderCustomDepth(true)
-                        mesh:SetCustomDepthStencilValue(255)
+                        mesh:SetCustomDepthStencilValue(252)
                     end
                 end)
             end
