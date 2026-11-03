@@ -4414,19 +4414,28 @@ local finalColor = hidden and BRIGHT_RED or BRIGHT_GREEN
                                 markData.MIDs[meshKey][i] = mid
                             end
                             if Valid(mid) then
-                                mid:SetVectorParameterValue("颜色", finalColor)
-                                mid:SetVectorParameterValue("Extra Light Color", finalColor)
-                                mid:SetVectorParameterValue("Para_Color", finalColor)
-                                mid:SetVectorParameterValue("Para_ColorTint", finalColor)
-                                mid:SetVectorParameterValue("Para_Color_1", finalColor)
-                                mid:SetVectorParameterValue("Tint", finalColor)
-                                mid:SetVectorParameterValue("Color", finalColor)
-                                mid:SetVectorParameterValue("BaseColor", finalColor)
-                                mid:SetVectorParameterValue("BodyColor", finalColor)
-                                mid:SetVectorParameterValue("MainColor", finalColor)
-                                mid:SetVectorParameterValue("DiffuseColor", finalColor)
-                                mid:SetVectorParameterValue("EmissiveColor", finalColor)
-                            end
+    mid:SetVectorParameterValue("颜色", finalColor)
+    mid:SetVectorParameterValue("Extra Light Color", finalColor)
+    mid:SetVectorParameterValue("Para_Color", finalColor)
+    mid:SetVectorParameterValue("Para_ColorTint", finalColor)
+    mid:SetVectorParameterValue("Para_Color_1", finalColor)
+    mid:SetVectorParameterValue("Tint", finalColor)
+    mid:SetVectorParameterValue("Color", finalColor)
+    mid:SetVectorParameterValue("BaseColor", finalColor)
+    mid:SetVectorParameterValue("BodyColor", finalColor)
+    mid:SetVectorParameterValue("MainColor", finalColor)
+    mid:SetVectorParameterValue("DiffuseColor", finalColor)
+    mid:SetVectorParameterValue("EmissiveColor", finalColor)
+    
+    -- 🔥 BRIGHTNESS BOOST PARAMETERS
+    pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 10.0) end)
+    pcall(function() mid:SetScalarParameterValue("EmissionStrength", 8.0) end)
+    pcall(function() mid:SetScalarParameterValue("LightIntensity", 5.0) end)
+    pcall(function() mid:SetScalarParameterValue("GlowIntensity", 8.0) end)
+    pcall(function() mid:SetScalarParameterValue("Brightness", 5.0) end)
+    pcall(function() mid:SetScalarParameterValue("ColorIntensity", 5.0) end)
+    pcall(function() mid:SetScalarParameterValue("EmissiveMultiplier", 5.0) end)
+end
                         end
                     end
                 end
@@ -5026,16 +5035,27 @@ local function MainLoop()
       local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
         local KismetSystemLibrary = import("KismetSystemLibrary")
-        local world = slua.getWorld()
-        if world ~= _G.ConsoleNewWallWorld then
-            if KismetSystemLibrary and world then
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CustomDepth 3")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
-                _G.ConsoleNewWallWorld = world
-            end
+local world = slua.getWorld()
+if world then
+    local nowC = os.clock()
+    if not _G.LastColorConsoleTime or (nowC - _G.LastColorConsoleTime) > 2.0 then
+        _G.LastColorConsoleTime = nowC
+        if KismetSystemLibrary then
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CustomDepth 3")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.Outline.Enable 1")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CharacterMinShadowFactor 100")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CharacterDiffuseOffset 500")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CharacterDiffusePower 500")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.EyeAdaptationQuality 0")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.Tonemapper.Sharpen 2")
+            KismetSystemLibrary.ExecuteConsoleCommand(world, "r.LightShafts 0")
+            _G.ConsoleNewWallWorld = world
         end
+    end
+end
 
         local meshes = GetAllSkeletalMeshes(enemy, markData)
         local seen = {}
@@ -5184,39 +5204,41 @@ local c_bOcc = LC and LC(1.0, 0.3, 0.0, 1.0) or {R=1, G=0.3, B=0, A=1}
         local occColor = isBot and c_bOcc or c_occ
         local finalColor = hidden and occColor or visColor
 
-        -- ═══ APPLY COLORS ═══
-        for _, mesh in ipairs(meshes) do
-            if Valid(mesh) then
-                pcall(function()
-                    if type(mesh.SetDrawDyeing) == "function" then
-                        mesh:SetDrawDyeing(true)
-                        mesh:SetDrawDyeingMode(2)
-                        mesh:SetVisibleDyeingColor(visColor)
-                        mesh:SetOccludedDyeingColor(occColor)
-                        mesh:SetDyeingColorFadeDistance(99999.0)
-                        mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
-                        mesh:SetDrawHighlight(true)
-                        mesh:OverrideHighlightColor(finalColor)
-                        mesh:SetHighlightCanBeOccluded(false)
-                        mesh:SetDrawIdeaOutline(true)
-                        mesh:SetIdeaOutlineNew(true)
-                        mesh:SetIdeaOutlineOcclusionHighlight(true)
-                        mesh:OverrideIdeaOutlineColor(finalColor)
-                        mesh:SetIdeaOutlineOcclusionColor(occColor)
-                        mesh:OverrideIdeaOutlineThickness(50.0)
-                        mesh:SetIdeaOverrideOutlineAndOcclusion(true)
-                        mesh:SetRenderCustomDepth(true)
-                        mesh:SetCustomDepthStencilValue(252)
--- 🔥 BRIGHTNESS BOOST ADD KAREIN:
-pcall(function() mesh:SetDyeingColorIntensity(5.0) end)
-pcall(function() mesh:SetIdeaOutlineIntensity(3.0) end)
-pcall(function() mesh:SetHighlightIntensity(2.0) end)
-                    end
-                end)
+        -- ═══ APPLY COLORS (MAX BRIGHTNESS) ═══
+for _, mesh in ipairs(meshes) do
+    if Valid(mesh) then
+        pcall(function()
+            if type(mesh.SetDrawDyeing) == "function" then
+                mesh:SetDrawDyeing(true)
+                mesh:SetDrawDyeingMode(2)
+                mesh:SetVisibleDyeingColor(visColor)
+                mesh:SetOccludedDyeingColor(occColor)
+                mesh:SetDyeingColorFadeDistance(99999.0)
+                mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
+                mesh:SetDrawHighlight(true)
+                mesh:OverrideHighlightColor(finalColor)
+                mesh:SetHighlightCanBeOccluded(false)
+                mesh:SetDrawIdeaOutline(true)
+                mesh:SetIdeaOutlineNew(true)
+                mesh:SetIdeaOutlineOcclusionHighlight(true)
+                mesh:OverrideIdeaOutlineColor(finalColor)
+                mesh:SetIdeaOutlineOcclusionColor(occColor)
+                mesh:OverrideIdeaOutlineThickness(80.0)   -- 50 se 80
+                mesh:SetIdeaOverrideOutlineAndOcclusion(true)
+                mesh:SetRenderCustomDepth(true)
+                mesh:SetCustomDepthStencilValue(252)
+
+                -- 🔥 FULL BRIGHTNESS BOOST (saare possible params)
+                pcall(function() mesh:SetDyeingColorIntensity(10.0) end)
+                pcall(function() mesh:SetIdeaOutlineIntensity(8.0) end)
+                pcall(function() mesh:SetHighlightIntensity(5.0) end)
+                pcall(function() mesh:SetIdeaOutlineBrightness(8.0) end)
+                pcall(function() mesh:SetDyeingColorBrightness(10.0) end)
+                pcall(function() mesh:SetDyeingColorSaturation(2.0) end)
+                pcall(function() mesh:SetIdeaOutlineSaturation(2.0) end)
             end
-        end
-        markData.ColorNewApplied = true
-    end)
+        end)
+    end
 end
 
 local function UndoColorBodyNew(enemy, markData)
