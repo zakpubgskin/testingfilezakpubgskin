@@ -5018,184 +5018,191 @@ local function MainLoop()
         end)
     end
       local function ApplyColorBodyNew(enemy, markData, localPlayer, pc, KismetSysLib, world)
-        if not Valid(localPlayer) or not Valid(pc) then return end
+    if not Valid(localPlayer) or not Valid(pc) then return end
+    if not KismetSysLib then return end
 
-        local now = os.clock()
-        if world and (world ~= _G.ConsoleNewWallWorld 
-            or not _G.LastDyeingReapply 
-            or (now - _G.LastDyeingReapply) > 5.0) then
-            _G.LastDyeingReapply = now
-            pcall(function()
-                KismetSysLib.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
-                KismetSysLib.ExecuteConsoleCommand(world, "r.CustomDepth 3")
-                KismetSysLib.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
-                KismetSysLib.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
-            end)
-            _G.ConsoleNewWallWorld = world
-        end
-
-        local meshes = GetAllSkeletalMeshes(enemy, markData)
-        local seen = {}
-        for _, m in ipairs(meshes) do seen[m] = true end
-        local function addMesh(m)
-            if slua.isValid(m) and not seen[m] then
-                seen[m] = true
-                table.insert(meshes, m)
-            end
-        end
-
-        local weapon = nil
-        pcall(function() weapon = enemy:GetCurrentWeapon() end)
-        if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then addMesh(weapon.Mesh) end
-
-        local avatar = nil
+    -- ═══ Console commands (one-time per world) ═══
+    local now = os.clock()
+    if world and (world ~= _G.ConsoleNewWallWorld 
+        or not _G.LastDyeingReapply 
+        or (now - _G.LastDyeingReapply) > 5.0) then
+        _G.LastDyeingReapply = now
         pcall(function()
-            avatar = enemy.CharacterAvatarComp2_BP
-            if not avatar and enemy.getAvatarComponent2 then avatar = enemy:getAvatarComponent2() end
+            KismetSysLib.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
+            KismetSysLib.ExecuteConsoleCommand(world, "r.CustomDepth 3")
+            KismetSysLib.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
+            KismetSysLib.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
         end)
-        if slua.isValid(avatar) and avatar.GetMeshCompBySlot then
-            for slot = 0, 7 do
-                pcall(function() addMesh(avatar:GetMeshCompBySlot(slot)) end)
-            end
-        end
+        _G.ConsoleNewWallWorld = world
+    end
 
-        for _, className in ipairs({"SkeletalMeshComponent","StaticMeshComponent"}) do
-            local ok, cls = pcall(import, className)
-            if ok and cls then
-                pcall(function()
-                    if type(enemy.GetComponentsByClass) ~= "function" then return end
-                    local comps = enemy:GetComponentsByClass(cls)
-                    if comps then
-                        for i = 0, comps:Num() - 1 do addMesh(comps:Get(i)) end
-                    end
-                end)
-            end
-        end
-
-        -- Visibility check (wall time)
-        local curTime = os.time()
-        if markData.LastVisCheckNewTime == nil or (curTime - markData.LastVisCheckNewTime) > 0.1 then
-            markData.LastVisCheckNewTime = curTime
-            local isHidden = false
-
-            pcall(function()
-                local headPos = nil
-                if type(enemy.GetBonePos) == "function" then
-                    local fb = (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()) or {X=0,Y=0,Z=0}
-                    headPos = enemy:GetBonePos("head", fb)
-                end
-                if not headPos and type(enemy.GetSocketLocation) == "function" then
-                    headPos = enemy:GetSocketLocation("head")
-                end
-                if not headPos then
-                    if type(enemy.K2_GetActorLocation) == "function" then
-                        headPos = enemy:K2_GetActorLocation()
-                        if headPos then headPos.Z = headPos.Z + 70 end
-                    end
-                end
-                if not headPos then return end
-
-                local GS = import("GameplayStatics")
-                local camMgr = GS.GetPlayerCameraManager(pc, 0)
-                if not slua.isValid(camMgr) then return end
-                local camLoc = camMgr:GetCameraLocation()
-                if not camLoc then return end
-
-                if not markData.HitResult then 
-                    markData.HitResult = import("HitResult")()
-                end
-                if not markData.IgnoreActors or markData.IgnoreActorsEnemy ~= enemy then
-                    if not markData.CachedActorClass then 
-                        markData.CachedActorClass = import("Actor")
-                    end
-                    markData.IgnoreActors = slua.Array(UEnums.EPropertyClass.Object, markData.CachedActorClass)
-                    markData.IgnoreActors:Add(localPlayer)
-                    markData.IgnoreActors:Add(enemy)
-                    markData.IgnoreActorsEnemy = enemy
-                end
-
-                local traceHit = false
-                pcall(function()
-                    traceHit = KismetSysLib.LineTraceSingle(
-                        pc,
-                        camLoc,
-                        headPos,
-                        UEnums.ETraceTypeQuery.TraceTypeQuery1,
-                        false,
-                        markData.IgnoreActors,
-                        UEnums.EDrawDebugTrace.None,
-                        markData.HitResult,
-                        true
-                    )
-                end)
-
-                if traceHit and markData.HitResult then
-                    local hitActor = markData.HitResult.Actor
-                    if slua.isValid(hitActor) and hitActor ~= enemy then
-                        isHidden = true
-                    end
-                end
-            end)
-
-            markData.CachedHiddenStateNew = isHidden
-        end
-
-        local hidden = markData.CachedHiddenStateNew
-        if hidden == nil then hidden = false end
-
-        local isBot = markData.AK_IS_BOT or false
-        local currentMeshCount = #meshes
-        local stateHash = string.format("%s_%d_%s",
-            isBot and "BOT" or "PLAYER", currentMeshCount, hidden and "H" or "V")
-
-        local nowT = os.time()
-        if markData.LastColorNewHash == stateHash
-           and markData.ColorNewApplied == true
-           and markData.LastColorNewTime
-           and (nowT - markData.LastColorNewTime) < 1 then
-            return
-        end
-        markData.LastColorNewHash = stateHash
-        markData.LastColorNewTime = nowT
-        markData.ColorNewApplied = true
-
-        local LC = _G.FLinearColor or import("LinearColor")
--- 🟡 Visible = YELLOW
-local c_vis  = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=255, G=255, B=0, A=255}
--- 🔴 Invisible = RED
-local c_occ  = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=255, G=0, B=0, A=255}
--- 🟡 Bot visible = light yellow
-local c_bVis = LC and LC(1.0, 0.8, 0.2, 1.0) or {R=255, G=204, B=51, A=255}
--- 🔴 Bot invisible = dark red
-local c_bOcc = LC and LC(0.6, 0.0, 0.0, 1.0) or {R=153, G=0, B=0, A=255}
-
-local visColor = isBot and c_bVis or c_vis
-local occColor = isBot and c_bOcc or c_occ
-local finalColor = hidden and occColor or visColor
-
-        for _, mesh in ipairs(meshes) do
-            if Valid(mesh) then
-                pcall(function() mesh:SetDrawDyeing(true) end)
-                pcall(function() mesh:SetDrawDyeingMode(1) end)
-                pcall(function() mesh:SetVisibleDyeingColor(visColor) end)
-                pcall(function() mesh:SetOccludedDyeingColor(occColor) end)
-                pcall(function() mesh:SetDyeingColorFadeDistance(99999.0) end)
-                pcall(function() mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0) end)
-                pcall(function() mesh:SetDrawHighlight(true) end)
-                pcall(function() mesh:OverrideHighlightColor(finalColor) end)
-                pcall(function() mesh:SetHighlightCanBeOccluded(false) end)
-                pcall(function() mesh:SetDrawIdeaOutline(true) end)
-                pcall(function() mesh:SetIdeaOutlineNew(true) end)
-                pcall(function() mesh:SetIdeaOutlineOcclusionHighlight(true) end)
-                pcall(function() mesh:OverrideIdeaOutlineColor(finalColor) end)
-                pcall(function() mesh:SetIdeaOutlineOcclusionColor(occColor) end)
-                pcall(function() mesh:OverrideIdeaOutlineThickness(20.0) end)
-                pcall(function() mesh:SetIdeaOverrideOutlineAndOcclusion(true) end)
-                pcall(function() mesh:SetRenderCustomDepth(true) end)
-                pcall(function() mesh:SetCustomDepthStencilValue(252) end)
-            end
+    -- ═══ Collect meshes ═══
+    local meshes = GetAllSkeletalMeshes(enemy, markData)
+    local seen = {}
+    for _, m in ipairs(meshes) do seen[m] = true end
+    local function addMesh(m)
+        if slua.isValid(m) and not seen[m] then
+            seen[m] = true
+            table.insert(meshes, m)
         end
     end
+
+    local weapon = nil
+    pcall(function() weapon = enemy:GetCurrentWeapon() end)
+    if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then addMesh(weapon.Mesh) end
+
+    local avatar = nil
+    pcall(function()
+        avatar = enemy.CharacterAvatarComp2_BP
+        if not avatar and enemy.getAvatarComponent2 then avatar = enemy:getAvatarComponent2() end
+    end)
+    if slua.isValid(avatar) and avatar.GetMeshCompBySlot then
+        for slot = 0, 7 do
+            pcall(function() addMesh(avatar:GetMeshCompBySlot(slot)) end)
+        end
+    end
+
+    for _, className in ipairs({"SkeletalMeshComponent","StaticMeshComponent"}) do
+        local ok, cls = pcall(import, className)
+        if ok and cls then
+            pcall(function()
+                if type(enemy.GetComponentsByClass) ~= "function" then return end
+                local comps = enemy:GetComponentsByClass(cls)
+                if comps then
+                    for i = 0, comps:Num() - 1 do addMesh(comps:Get(i)) end
+                end
+            end)
+        end
+    end
+
+    -- ═══ Visibility check — FIXED: os.clock() for 0.1s precision ═══
+    local curTime = os.clock()
+    if markData.LastVisCheckNewTime == nil or (curTime - markData.LastVisCheckNewTime) > 0.1 then
+        markData.LastVisCheckNewTime = curTime
+        local isHidden = false
+
+        pcall(function()
+            local headPos = nil
+            if type(enemy.GetBonePos) == "function" then
+                local fb = (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()) or {X=0,Y=0,Z=0}
+                headPos = enemy:GetBonePos("head", fb)
+            end
+            if not headPos and type(enemy.GetSocketLocation) == "function" then
+                headPos = enemy:GetSocketLocation("head")
+            end
+            if not headPos then
+                if type(enemy.K2_GetActorLocation) == "function" then
+                    headPos = enemy:K2_GetActorLocation()
+                    if headPos then headPos.Z = headPos.Z + 70 end
+                end
+            end
+            if not headPos then return end
+
+            local GS = import("GameplayStatics")
+            local camMgr = GS.GetPlayerCameraManager(pc, 0)
+            if not slua.isValid(camMgr) then return end
+            local camLoc = camMgr:GetCameraLocation()
+            if not camLoc then return end
+
+            if not markData.HitResult then 
+                markData.HitResult = import("HitResult")()
+            end
+            if not markData.IgnoreActors or markData.IgnoreActorsEnemy ~= enemy then
+                if not markData.CachedActorClass then 
+                    markData.CachedActorClass = import("Actor")
+                end
+                markData.IgnoreActors = slua.Array(UEnums.EPropertyClass.Object, markData.CachedActorClass)
+                markData.IgnoreActors:Add(localPlayer)
+                markData.IgnoreActors:Add(enemy)
+                markData.IgnoreActorsEnemy = enemy
+            end
+
+            local traceHit = false
+            pcall(function()
+                traceHit = KismetSysLib.LineTraceSingle(
+                    pc,
+                    camLoc,
+                    headPos,
+                    UEnums.ETraceTypeQuery.TraceTypeQuery1,
+                    false,
+                    markData.IgnoreActors,
+                    UEnums.EDrawDebugTrace.None,
+                    markData.HitResult,
+                    true
+                )
+            end)
+
+            if traceHit and markData.HitResult then
+                local hitActor = markData.HitResult.Actor
+                if slua.isValid(hitActor) and hitActor ~= enemy then
+                    isHidden = true
+                end
+            end
+        end)
+
+        markData.CachedHiddenStateNew = isHidden
+    end
+
+    local hidden = markData.CachedHiddenStateNew
+    if hidden == nil then hidden = false end
+
+    -- ═══ State hash + throttle ═══
+    local isBot = markData.AK_IS_BOT or false
+    local currentMeshCount = #meshes
+    local stateHash = string.format("%s_%d_%s",
+        isBot and "BOT" or "PLAYER", currentMeshCount, hidden and "H" or "V")
+
+    local nowT = os.clock()  -- 🟢 FIXED: os.clock() for sub-second throttle
+    if markData.LastColorNewHash == stateHash
+       and markData.ColorNewApplied == true
+       and markData.LastColorNewTime
+       and (nowT - markData.LastColorNewTime) < 0.3 then  -- 🟢 0.3s throttle
+        return
+    end
+    markData.LastColorNewHash = stateHash
+    markData.LastColorNewTime = nowT
+    markData.ColorNewApplied = true
+
+    -- ═══ COLORS — 0-1 range, guaranteed bright ═══
+    local LC = _G.FLinearColor or import("LinearColor")
+    
+    -- 🟡 Visible = BRIGHT YELLOW (0-1 range)
+    local c_vis  = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=1, G=1, B=0, A=1}
+    -- 🔴 Invisible = BRIGHT RED
+    local c_occ  = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=1, G=0, B=0, A=1}
+    -- 🟡 Bot visible = LIGHT YELLOW
+    local c_bVis = LC and LC(1.0, 0.9, 0.3, 1.0) or {R=1, G=0.9, B=0.3, A=1}
+    -- 🔴 Bot invisible = DARK RED (differentiated from player)
+    local c_bOcc = LC and LC(0.8, 0.0, 0.0, 1.0) or {R=0.8, G=0, B=0, A=1}
+
+    local visColor = isBot and c_bVis or c_vis
+    local occColor = isBot and c_bOcc or c_occ
+    local finalColor = hidden and occColor or visColor
+
+    -- ═══ Apply to all meshes ═══
+    for _, mesh in ipairs(meshes) do
+        if Valid(mesh) then
+            pcall(function() mesh:SetDrawDyeing(true) end)
+            pcall(function() mesh:SetDrawDyeingMode(1) end)
+            pcall(function() mesh:SetVisibleDyeingColor(visColor) end)
+            pcall(function() mesh:SetOccludedDyeingColor(occColor) end)
+            pcall(function() mesh:SetDyeingColorFadeDistance(99999.0) end)
+            pcall(function() mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0) end)
+            pcall(function() mesh:SetDrawHighlight(true) end)
+            pcall(function() mesh:OverrideHighlightColor(finalColor) end)
+            pcall(function() mesh:SetHighlightCanBeOccluded(false) end)
+            pcall(function() mesh:SetDrawIdeaOutline(true) end)
+            pcall(function() mesh:SetIdeaOutlineNew(true) end)
+            pcall(function() mesh:SetIdeaOutlineOcclusionHighlight(true) end)
+            pcall(function() mesh:OverrideIdeaOutlineColor(finalColor) end)
+            pcall(function() mesh:SetIdeaOutlineOcclusionColor(occColor) end)
+            pcall(function() mesh:OverrideIdeaOutlineThickness(20.0) end)
+            pcall(function() mesh:SetIdeaOverrideOutlineAndOcclusion(true) end)
+            pcall(function() mesh:SetRenderCustomDepth(true) end)
+            pcall(function() mesh:SetCustomDepthStencilValue(252) end)
+        end
+    end
+end
 
 local function UndoColorBodyNew(enemy, markData)
     pcall(function()
