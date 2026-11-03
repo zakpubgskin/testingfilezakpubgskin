@@ -5162,16 +5162,17 @@ local function MainLoop()
         markData.ColorNewApplied = false
 
         -- ═══ COLORS (0-1 range, BRIGHT) ═══
-        local LC = import("LinearColor") or _G.FLinearColor
+        -- ═══ COLORS (MAX BRIGHTNESS) ═══
+local LC = import("LinearColor") or _G.FLinearColor
 
-        -- 🟡 Visible = BRIGHT YELLOW
-        local c_vis  = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=1, G=1, B=0, A=1}
-        -- 🔴 Invisible = BRIGHT RED
-        local c_occ  = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=1, G=0, B=0, A=1}
-        -- 🟡 Bot visible = LIGHT YELLOW
-        local c_bVis = LC and LC(1.0, 0.9, 0.3, 1.0) or {R=1, G=0.9, B=0.3, A=1}
-        -- 🔴 Bot invisible = DARK RED
-        local c_bOcc = LC and LC(0.8, 0.0, 0.0, 1.0) or {R=0.8, G=0, B=0, A=1}
+-- 🟡 Visible = PURE BRIGHT YELLOW (max saturation)
+local c_vis  = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=1, G=1, B=0, A=1}
+-- 🔴 Invisible = PURE BRIGHT RED (max saturation)
+local c_occ  = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=1, G=0, B=0, A=1}
+-- 🟢 Bot visible = BRIGHT LIME GREEN
+local c_bVis = LC and LC(0.2, 1.0, 0.2, 1.0) or {R=0.2, G=1, B=0.2, A=1}
+-- 🔴 Bot invisible = BRIGHT ORANGE-RED
+local c_bOcc = LC and LC(1.0, 0.3, 0.0, 1.0) or {R=1, G=0.3, B=0, A=1}
 
         local visColor = isBot and c_bVis or c_vis
         local occColor = isBot and c_bOcc or c_occ
@@ -5196,10 +5197,14 @@ local function MainLoop()
                         mesh:SetIdeaOutlineOcclusionHighlight(true)
                         mesh:OverrideIdeaOutlineColor(finalColor)
                         mesh:SetIdeaOutlineOcclusionColor(occColor)
-                        mesh:OverrideIdeaOutlineThickness(20.0)
+                        mesh:OverrideIdeaOutlineThickness(50.0)
                         mesh:SetIdeaOverrideOutlineAndOcclusion(true)
                         mesh:SetRenderCustomDepth(true)
                         mesh:SetCustomDepthStencilValue(252)
+-- 🔥 BRIGHTNESS BOOST ADD KAREIN:
+pcall(function() mesh:SetDyeingColorIntensity(5.0) end)
+pcall(function() mesh:SetIdeaOutlineIntensity(3.0) end)
+pcall(function() mesh:SetHighlightIntensity(2.0) end)
                     end
                 end)
             end
