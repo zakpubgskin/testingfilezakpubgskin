@@ -5888,9 +5888,12 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     -- ========================================== 
                     -- ESP COUNTER (ENEMY P: X | B: X)
                     -- ========================================== 
-                                       if _G.GTLMODConfig.Esp7 then
+                                                          -- ==========================================
+                    -- ESP7 PREMIUM COUNTER — REAL 5 | BOT 3 (single line)
+                    -- ==========================================
+                    if _G.GTLMODConfig.Esp7 then
                         pcall(function()
-                            -- === COUNT ENEMIES ===
+                            -- Count enemies
                             local myTeamId = localPlayer.TeamID or localPlayer:GetTeamID() or 0
                             local myPos = localPlayer:K2_GetActorLocation()
                             local maxDist = 35000
@@ -5922,7 +5925,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 end
                             end
 
-                            -- === PREMIUM SPLIT-PANEL COUNTER ===
+                            -- Get canvas
                             local root = nil
                             pcall(function()
                                 local ui = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
@@ -5950,20 +5953,21 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             end
 
                             -- Premium palette
-                            local COL_RED_BG     = col(0.55, 0.04, 0.08, 0.96)
-                            local COL_GREEN_BG   = col(0.04, 0.42, 0.14, 0.96)
-                            local COL_RED_BORDER = col(1.00, 0.20, 0.30, 1.00)
+                            local COL_RED_BG       = col(0.55, 0.04, 0.08, 0.96)
+                            local COL_GREEN_BG     = col(0.04, 0.42, 0.14, 0.96)
+                            local COL_RED_BORDER   = col(1.00, 0.20, 0.30, 1.00)
                             local COL_GREEN_BORDER = col(0.20, 1.00, 0.50, 1.00)
-                            local COL_RED_TEXT   = col(1.00, 0.92, 0.94, 1.00)
-                            local COL_GREEN_TEXT = col(0.92, 1.00, 0.94, 1.00)
-                            local COL_WHITE_DIV  = col(1.00, 1.00, 1.00, 0.90)
-                            local COL_DARK_OUTER = col(0.00, 0.00, 0.00, 0.95)
-                            local COL_GREY_BG    = col(0.22, 0.22, 0.24, 0.92)
-                            local COL_GREY_TEXT  = col(0.70, 0.70, 0.72, 1.00)
+                            local COL_RED_TEXT     = col(1.00, 1.00, 1.00, 1.00)   -- white text on red
+                            local COL_GREEN_TEXT   = col(1.00, 1.00, 1.00, 1.00)   -- white text on green
+                            local COL_WHITE_DIV    = col(1.00, 1.00, 1.00, 0.95)
+                            local COL_DARK_OUTER   = col(0.00, 0.00, 0.00, 0.95)
+                            local COL_GREY_BG      = col(0.22, 0.22, 0.24, 0.92)
+                            local COL_GREY_TEXT    = col(0.70, 0.70, 0.72, 1.00)
 
                             _G.__ESP7_UI = _G.__ESP7_UI or {}
                             local U = _G.__ESP7_UI
 
+                            -- === BUILD ONCE ===
                             if not (slua.isValid(U.OuterBorder)) then
                                 local function mkBorder(color)
                                     local w = nil
@@ -6003,62 +6007,54 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                     return s
                                 end
 
-                                -- Dimensions
-                                U.W, U.H = 280, 46
+                                -- === DIMENSIONS ===
+                                U.W, U.H = 280, 38
                                 U.Half = U.W * 0.5
 
-                                -- === OUTER DARK BORDER (full frame) ===
+                                -- Outer black border (full frame)
                                 U.OuterBorder = mkBorder(COL_DARK_OUTER)
                                 U.OuterBorderSlot = U.OuterBorder and mkSlot(U.OuterBorder, 0, 0, U.W, U.H, 55)
 
-                                -- === LEFT PANEL (RED) ===
+                                -- Left panel (RED)
                                 U.RedPanel = mkBorder(COL_RED_BG)
                                 U.RedPanelSlot = U.RedPanel and mkSlot(U.RedPanel, 2, 2, U.Half - 3, U.H - 4, 56)
 
-                                -- === RIGHT PANEL (GREEN) ===
+                                -- Right panel (GREEN)
                                 U.GreenPanel = mkBorder(COL_GREEN_BG)
                                 U.GreenPanelSlot = U.GreenPanel and mkSlot(U.GreenPanel, U.Half + 1, 2, U.Half - 3, U.H - 4, 56)
 
-                                -- === CENTER WHITE DIVIDER (2px) ===
+                                -- Center white divider
                                 U.Divider = mkBorder(COL_WHITE_DIV)
                                 U.DividerSlot = U.Divider and mkSlot(U.Divider, U.Half - 1, 4, 2, U.H - 8, 57)
 
-                                -- === RED NEON BORDER (top of left panel) ===
+                                -- Red neon top border
                                 U.RedBorderTop = mkBorder(COL_RED_BORDER)
                                 U.RedBorderTopSlot = U.RedBorderTop and mkSlot(U.RedBorderTop, 2, 2, U.Half - 3, 2, 58)
 
-                                -- === GREEN NEON BORDER (top of right panel) ===
+                                -- Green neon top border
                                 U.GreenBorderTop = mkBorder(COL_GREEN_BORDER)
                                 U.GreenBorderTopSlot = U.GreenBorderTop and mkSlot(U.GreenBorderTop, U.Half + 1, 2, U.Half - 3, 2, 58)
 
-                                                                -- === LABEL "REAL" (top-left, inside box) ===
-                                U.RealLabel = mkText("REAL", COL_RED_TEXT, 10)
-                                U.RealLabelSlot = U.RealLabel and mkSlot(U.RealLabel, 4, 4, U.Half - 8, 12, 60)
+                                -- SINGLE TEXT on left: "REAL  5"
+                                U.RealText = mkText("REAL  0", COL_RED_TEXT, 16)
+                                U.RealTextSlot = U.RealText and mkSlot(U.RealText, 2, 2, U.Half - 3, U.H - 4, 60)
 
-                                -- === COUNT "5" (center-left, inside box, big) ===
-                                U.RealCount = mkText("0", COL_RED_TEXT, 20)
-                                U.RealCountSlot = U.RealCount and mkSlot(U.RealCount, 4, 16, U.Half - 8, 20, 60)
-
-                                -- === LABEL "BOT" (top-right, inside box) ===
-                                U.BotLabel = mkText("BOT", COL_GREEN_TEXT, 10)
-                                U.BotLabelSlot = U.BotLabel and mkSlot(U.BotLabel, U.Half + 3, 4, U.Half - 8, 12, 60)
-
-                                -- === COUNT "3" (center-right, inside box, big) ===
-                                U.BotCount = mkText("0", COL_GREEN_TEXT, 20)
-                                U.BotCountSlot = U.BotCount and mkSlot(U.BotCount, U.Half + 3, 16, U.Half - 8, 20, 60)
+                                -- SINGLE TEXT on right: "BOT  3"
+                                U.BotText = mkText("BOT  0", COL_GREEN_TEXT, 16)
+                                U.BotTextSlot = U.BotText and mkSlot(U.BotText, U.Half + 1, 2, U.Half - 3, U.H - 4, 60)
 
                                 U.LastReal, U.LastBot = -1, -1
                                 U.LastX, U.LastY = nil, nil
                                 U.Visible = false
                             end
 
-                            -- === UPDATE LABELS ===
-                            if U.LastReal ~= realCount and slua.isValid(U.RealCount) then
-                                pcall(function() U.RealCount:SetText(tostring(realCount)) end)
+                            -- === UPDATE TEXT (single combined string) ===
+                            if U.LastReal ~= realCount and slua.isValid(U.RealText) then
+                                pcall(function() U.RealText:SetText(string.format("REAL  %d", realCount)) end)
                                 U.LastReal = realCount
                             end
-                            if U.LastBot ~= aiCount and slua.isValid(U.BotCount) then
-                                pcall(function() U.BotCount:SetText(tostring(aiCount)) end)
+                            if U.LastBot ~= aiCount and slua.isValid(U.BotText) then
+                                pcall(function() U.BotText:SetText(string.format("BOT  %d", aiCount)) end)
                                 U.LastBot = aiCount
                             end
 
@@ -6078,17 +6074,11 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             if slua.isValid(U.GreenBorderTop) then
                                 pcall(function() U.GreenBorderTop:SetBrushColor(botActive and COL_GREEN_BORDER or COL_GREY_TEXT) end)
                             end
-                            if slua.isValid(U.RealLabel) then
-                                pcall(function() U.RealLabel:SetColorAndOpacity(redActive and COL_RED_TEXT or COL_GREY_TEXT) end)
+                            if slua.isValid(U.RealText) then
+                                pcall(function() U.RealText:SetColorAndOpacity(redActive and COL_RED_TEXT or COL_GREY_TEXT) end)
                             end
-                            if slua.isValid(U.RealCount) then
-                                pcall(function() U.RealCount:SetColorAndOpacity(redActive and COL_RED_TEXT or COL_GREY_TEXT) end)
-                            end
-                            if slua.isValid(U.BotLabel) then
-                                pcall(function() U.BotLabel:SetColorAndOpacity(botActive and COL_GREEN_TEXT or COL_GREY_TEXT) end)
-                            end
-                            if slua.isValid(U.BotCount) then
-                                pcall(function() U.BotCount:SetColorAndOpacity(botActive and COL_GREEN_TEXT or COL_GREY_TEXT) end)
+                            if slua.isValid(U.BotText) then
+                                pcall(function() U.BotText:SetColorAndOpacity(botActive and COL_GREEN_TEXT or COL_GREY_TEXT) end)
                             end
 
                             -- === POSITION (top-center) ===
@@ -6125,10 +6115,8 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                                 setPos(U.DividerSlot, x + U.Half - 1, y + 4)
                                 setPos(U.RedBorderTopSlot, x + 2, y + 2)
                                 setPos(U.GreenBorderTopSlot, x + U.Half + 1, y + 2)
-                                                              setPos(U.RealLabelSlot, x + 4, y + 3)
-                                setPos(U.RealCountSlot, x + 4, y + 15)
-                                setPos(U.BotLabelSlot, x + U.Half + 3, y + 3)
-                                setPos(U.BotCountSlot, x + U.Half + 3, y + 15)
+                                setPos(U.RealTextSlot, x + 2, y + 2)
+                                setPos(U.BotTextSlot, x + U.Half + 1, y + 2)
                                 U.LastX, U.LastY = x, y
                             end
 
@@ -6136,7 +6124,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             if not U.Visible then
                                 for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
                                     "RedBorderTop","GreenBorderTop",
-                                    "RealLabel","RealCount","BotLabel","BotCount"}) do
+                                    "RealText","BotText"}) do
                                     if slua.isValid(U[f]) then
                                         pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
                                     end
@@ -6151,7 +6139,7 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             if not U then return end
                             for _, f in ipairs({"OuterBorder","RedPanel","GreenPanel","Divider",
                                 "RedBorderTop","GreenBorderTop",
-                                "RealLabel","RealCount","BotLabel","BotCount"}) do
+                                "RealText","BotText"}) do
                                 if slua and slua.isValid and slua.isValid(U[f]) then
                                     pcall(function() U[f]:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
                                 end
@@ -6159,7 +6147,6 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                             U.Visible = false
                         end)
                     end
-
                     -- ==========================================
                     -- ESP5 PREMIUM BOX (screen-space, corner brackets)
                     -- ==========================================
