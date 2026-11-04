@@ -4990,9 +4990,9 @@ local function MainLoop()
             end
         end)
     end
-            local function ApplyColorBodyNew(enemy, markData)
+           local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
-        -- KÃ­ch hoáº¡t Console Command náº¿u chÆ°a báº­t (Chá» gá»i 1 láº§n)
+        -- Console commands ek baar hi (already cached)
         if not _G.ConsoleNewWallReady then
             local KismetSystemLibrary = import("KismetSystemLibrary")
             local world = slua.getWorld()
@@ -5005,41 +5005,151 @@ local function MainLoop()
             end
         end
 
-        -- Láº¥y toÃ n bá» Mesh cá»§a káº» Äá»ch
+        -- Mesh collect
         local meshes = GetAllSkeletalMeshes(enemy, markData)
-        
-        -- ThÃªm lÆ°á»i cá»§a vÅ© khÃ­ Äang cáº§m trÃªn tay
         local weapon = nil
         pcall(function() weapon = enemy:GetCurrentWeapon() end)
         if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
             table.insert(meshes, weapon.Mesh)
         end
 
-        local isBot = markData.AK_IS_BOT or false
-        local currentMeshCount = #meshes
-        
-        -- [Tá»I Æ¯U FPS TUYá»T Äá»I] - CHáº¾ Äá» NGá»¦ ÄÃNG (CACHE)
-        -- Táº¡o mÃ£ bÄm nháº­n diá»n: Náº¿u sá» lÆ°á»£ng quáº§n Ã¡o/sÃºng cá»§a Äá»ch khÃ´ng Äá»i, bá» qua vÃ²ng láº·p C++ cá»±c náº·ng bÃªn dÆ°á»i
-        local stateHash = (isBot and "BOT" or "PLAYER") .. "_" .. tostring(currentMeshCount)
-        
-        if markData.LastColorNewHash == stateHash and markData.ColorNewApplied then
-            return -- Má»i thá»© ÄÃ£ ÄÆ°á»£c tÃ´ mÃ u trÆ°á»c ÄÃ³, ngáº¯t hÃ m táº¡i ÄÃ¢y Äá» trÃ¡nh Äá»t CPU!
+        -- ═══════════════════════════════════════════════════════════
+        -- VISIBILITY CHECK — REAL LINE TRACE (WOW Map Style)
+        -- Wall ke peeche = RED | Saamne = GREEN
+        -- ═══════════════════════════════════════════════════════════
+        local now = os.clock()
+        local hidden = markData.CachedHidden
+        local visCheckNeeded = (markData.LastVisCheckTime == nil) or ((now - markData.LastVisCheckTime) > 0.15)
+
+        if visCheckNeeded then
+            markData.LastVisCheckTime = now
+            hidden = true  -- fail-safe: hidden by default
+
+            pcall(function()
+                -- Get local player + controller
+                local localPlayer = nil
+                local pc = nil
+                pcall(function()
+                    local GD = require("GameLua.GameCore.Data.GameplayData")
+                    if GD and GD.GetPlayerCharacter then 
+                        localPlayer = GD.GetPlayerCharacter()
+                        if GD.GetPlayerController then pc = GD.GetPlayerController() end
+                    end
+                end)
+                if not Valid(localPlayer) then return end
+                if not Valid(pc) and type(localPlayer.GetPlayerControllerSafety) == "function" then
+                    pc = localPlayer:GetPlayerControllerSafety()
+                end
+                if not Valid(pc) then return end
+
+                -- Get enemy head position
+                local headPos = nil
+                if type(enemy.GetBonePos) == "function" then
+                    local fb = (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()) or {X=0,Y=0,Z=0}
+                    headPos = enemy:GetBonePos("head", fb)
+                end
+                if not headPos and type(enemy.GetSocketLocation) == "function" then
+                    headPos = enemy:GetSocketLocation("head")
+                end
+                if not headPos and type(enemy.K2_GetActorLocation) == "function" then
+                    headPos = enemy:K2_GetActorLocation()
+                    if headPos then headPos.Z = headPos.Z + 70 end
+                end
+                if not headPos then return end
+
+                -- Get camera location
+                local GS = import("GameplayStatics")
+                local camMgr = GS.GetPlayerCameraManager(pc, 0)
+                if not slua.isValid(camMgr) then return end
+                local camLoc = camMgr:GetCameraLocation()
+                if not camLoc then return end
+
+                -- Reusable trace objects (cache on markData)
+                if not markData.HitResult then
+                    markData.HitResult = import("HitResult")()
+                end
+                if not markData.IgnoreActors or markData.IgnoreActorsEnemy ~= enemy then
+                    if not markData.CachedActorClass then
+                        markData.CachedActorClass = import("Actor")
+                    end
+                    markData.IgnoreActors = slua.Array(UEnums.EPropertyClass.Object, markData.CachedActorClass)
+                    markData.IgnoreActors:Add(localPlayer)
+                    markData.IgnoreActors:Add(enemy)
+                    markData.IgnoreActorsEnemy = enemy
+                end
+
+                -- REAL line trace: camera → enemy head
+                local KSL = import("KismetSystemLibrary")
+                local traceHit = false
+                pcall(function()
+                    traceHit = KSL.LineTraceSingle(
+                        pc,
+                        camLoc,
+                        headPos,
+                        UEnums.ETraceTypeQuery.TraceTypeQuery1,
+                        false,
+                        markData.IgnoreActors,
+                        UEnums.EDrawDebugTrace.None,
+                        markData.HitResult,
+                        true
+                    )
+                end)
+
+                -- Determine visibility
+                if traceHit and markData.HitResult then
+                    local hitActor = markData.HitResult.Actor
+                    if slua.isValid(hitActor) and hitActor ~= enemy then
+                        hidden = true   -- wall/cover hit → RED
+                    else
+                        hidden = false  -- no obstacle → GREEN
+                    end
+                else
+                    hidden = false      -- no hit at all → visible → GREEN
+                end
+            end)
+
+            markData.CachedHidden = hidden
         end
-        
-        -- Náº¿u cÃ³ sá»± thay Äá»i (má»i báº­t, Äá»ch Äá»i sÃºng, lá»¥m Äá»), tiáº¿n hÃ nh cáº­p nháº­t mÃ u vÃ  lÆ°u Cache
+
+        if markData.CachedHidden ~= nil then hidden = markData.CachedHidden end
+        if hidden == nil then hidden = true end
+
+        -- ═══════════════════════════════════════════════════════════
+        -- COLOR SETUP — WOW Map Style
+        -- Visible  → Bright GREEN
+        -- Hidden   → Bright RED (wall ke peeche)
+        -- ═══════════════════════════════════════════════════════════
+        local LC = import("LinearColor") or _G.FLinearColor
+
+        -- 🔥 SAME AS WOW MAP — bright, solid, single color each
+        local GREEN_VISIBLE = LC and LC(0.0, 1.0, 0.0, 1.0) or {R=0.0, G=1.0, B=0.0, A=1.0}
+        local RED_HIDDEN    = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=1.0, G=0.0, B=0.0, A=1.0}
+
+        -- Both visible & occluded use same color per state (WOW style: single solid color)
+        local visColor = GREEN_VISIBLE
+        local occColor = RED_HIDDEN
+        local finalColor = hidden and RED_HIDDEN or GREEN_VISIBLE
+
+        -- ═══════════════════════════════════════════════════════════
+        -- CACHE CHECK — skip if state unchanged (FPS saver)
+        -- ═══════════════════════════════════════════════════════════
+        local currentMeshCount = #meshes
+        local stateHash = tostring(currentMeshCount) .. "_" .. (hidden and "H" or "V") .. "_" .. (markData.AK_IS_BOT and "B" or "P")
+
+        local nowT = os.clock()
+        local lastApply = markData.LastColorNewTime or 0
+        if markData.LastColorNewHash == stateHash
+           and markData.ColorNewApplied == true
+           and (nowT - lastApply) < 0.25 then
+            return
+        end
         markData.LastColorNewHash = stateHash
-        markData.ColorNewApplied = true
+        markData.LastColorNewTime = nowT
+        markData.ColorNewApplied = false
 
-        -- Chá» Load bá» mÃ u khi thá»±c sá»± cáº§n xá»­ lÃ½
-        local LinearColorClass = import("LinearColor") or _G.FLinearColor
-        local c_vis = LinearColorClass and LinearColorClass(0, 100, 0, 1) or {R=0, G=100, B=0, A=1}
-        local c_occ = LinearColorClass and LinearColorClass(100, 0, 0, 1) or {R=100, G=0, B=0, A=1}
-        local c_bVis = LinearColorClass and LinearColorClass(49, 48, 0, 100) or {R=49, G=48, B=0, A=100}
-        local c_bOcc = LinearColorClass and LinearColorClass(9, 1.5, 45, 100) or {R=9, G=1.5, B=45, A=100}
-
-        local visColor = isBot and c_bVis or c_vis
-        local occColor = isBot and c_bOcc or c_occ
-
+        -- ═══════════════════════════════════════════════════════════
+        -- APPLY COLOR — same as WOW map
+        -- ═══════════════════════════════════════════════════════════
         for _, mesh in ipairs(meshes) do
             if Valid(mesh) then
                 pcall(function()
@@ -5051,49 +5161,22 @@ local function MainLoop()
                         mesh:SetDyeingColorFadeDistance(99999.0)
                         mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
                         mesh:SetDrawHighlight(true)
-                        mesh:OverrideHighlightColor(visColor)
+                        mesh:OverrideHighlightColor(finalColor)
                         mesh:SetHighlightCanBeOccluded(false)
                         mesh:SetDrawIdeaOutline(true)
                         mesh:SetIdeaOutlineNew(true)
                         mesh:SetIdeaOutlineOcclusionHighlight(true)
-                        mesh:OverrideIdeaOutlineColor(visColor)
+                        mesh:OverrideIdeaOutlineColor(finalColor)
                         mesh:SetIdeaOutlineOcclusionColor(occColor)
-                        mesh:OverrideIdeaOutlineThickness(20.0)
+                        mesh:OverrideIdeaOutlineThickness(5.0)
                         mesh:SetIdeaOverrideOutlineAndOcclusion(true)
                         mesh:SetRenderCustomDepth(true)
-                        mesh:SetCustomDepthStencilValue(255)
+                        mesh:SetCustomDepthStencilValue(252)
                     end
                 end)
             end
         end
-    end)
-end
-
-local function UndoColorBodyNew(enemy, markData)
-    pcall(function()
-        if markData.ColorNewApplied then
-            local meshes = GetAllSkeletalMeshes(enemy, markData)
-            local weapon = nil
-            pcall(function() weapon = enemy:GetCurrentWeapon() end)
-            if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
-                table.insert(meshes, weapon.Mesh)
-            end
-
-            for _, mesh in ipairs(meshes) do
-                if Valid(mesh) then
-                    pcall(function()
-                        if type(mesh.SetDrawDyeing) == "function" then
-                            mesh:SetDrawDyeing(false)
-                            mesh:SetDrawHighlight(false)
-                            mesh:SetDrawIdeaOutline(false)
-                            mesh:SetRenderCustomDepth(false)
-                        end
-                    end)
-                end
-            end
-            markData.ColorNewApplied = false
-            markData.LastColorNewHash = "" -- XÃ³a Cache Äá» láº§n sau báº­t láº¡i sáº½ tÃ­nh toÃ¡n láº¡i mÆ°á»£t mÃ 
-        end
+        markData.ColorNewApplied = true
     end)
 end
     -- ========================================== 
