@@ -4568,37 +4568,37 @@ end
 _G.AimTouch = function()
     pcall(function()
         if not _G.GTLMODConfig.AimTouchEnable then return end
-
+        
         local player = GameplayData.GetPlayerCharacter()
         if not slua.isValid(player) then return end
-
+        
         local pc = player:GetPlayerControllerSafety()
         if not slua.isValid(pc) then return end
-
+        
         local isFiring = player.bIsWeaponFiring
         local isADS = player.bIsGunADS
-
+        
         local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
         if not weapon and type(player.GetCurrentShootWeapon) == "function" then
             weapon = player:GetCurrentShootWeapon()
         end
-
+        
         local isShotgun = false
         local isSniper = false
         local currentAmmo = 1
-
+        
         if slua.isValid(weapon) then
             local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
             local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
-
-            if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then
-                isShotgun = true
+            
+            if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then 
+                isShotgun = true 
             end
-
+            
             if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then
                 isSniper = true
             end
-
+            
             if type(weapon.GetCurrentAmmo) == "function" then
                 currentAmmo = weapon:GetCurrentAmmo()
             elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then
@@ -4632,9 +4632,9 @@ _G.AimTouch = function()
         local useVisCheck = false
         local igKnock = false
         local igBot = false
-
-        local predVal = 0
-        local recoilCompVal = 0
+        
+        local predVal = 0 
+        local recoilCompVal = 0 
 
         if isShotgun and _G.GTLMODConfig.AimTouchSG then
             cond = _G.GTLMODState.CustomTextData.AimTouchSGCond or 1
@@ -4648,7 +4648,7 @@ _G.AimTouch = function()
             useVisCheck = _G.GTLMODConfig.AimTouchSGVisCheck
             igKnock = _G.GTLMODConfig.AimTouchSGIgKnock
             igBot = _G.GTLMODConfig.AimTouchSGIgBot
-
+            
         elseif isADS then
             if isSniper and _G.GTLMODConfig.AimTouchScopeSniper then
                 cond = _G.GTLMODState.CustomTextData.AimTouchSniperCond or 2
@@ -4681,7 +4681,7 @@ _G.AimTouch = function()
         else
             if not _G.GTLMODConfig.AimTouchHipfire then return end
             cond = _G.GTLMODState.CustomTextData.AimTouchHipCond or 1
-            if cond == 1 and not isFiring then return end
+            if cond == 1 and not isFiring then return end 
             prioMode = _G.GTLMODState.CustomTextData.AimTouchHipPrio or 1
             boneIdx = _G.GTLMODState.CustomTextData.AimTouchHipBone or 1
             speedVal = _G.GTLMODState.CustomTextData.AimTouchHipSpeed or 50
@@ -4692,35 +4692,35 @@ _G.AimTouch = function()
             igBot = _G.GTLMODConfig.AimTouchHipIgBot
         end
 
-        local currentMaxDist = maxDistMeters * 100
+        local currentMaxDist = maxDistMeters * 100 
 
         local enemies = _G.GetEnemyTargetsFromActors(currentMaxDist)
         if not enemies or #enemies == 0 then return end
-
+        
         local FVector2D = import("Vector2D")
         local UGameplayStatics = import("GameplayStatics")
         local KismetMathLibrary = import("KismetMathLibrary")
-
+        
         local camManager = UGameplayStatics.GetPlayerCameraManager(pc, 0)
         if not slua.isValid(camManager) then return end
-
+        
         local camLoc = camManager:GetCameraLocation()
         if not camLoc then return end
-
+        
         local ui_util = require("client.common.ui_util")
         if not ui_util then return end
-
+        
         local viewportSize = ui_util.GetViewportSize()
         if not viewportSize then return end
-
+        
         local centerX = viewportSize.X * 0.5
         local centerY = viewportSize.Y * 0.5
-
+        
         local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
-
+        
         local bestTarget = nil
-        local bestScore = 99999999
-
+        local bestScore = 99999999 
+        
         local selBoneName = "head"
         if boneIdx == 1 then selBoneName = "head"
         elseif boneIdx == 2 then selBoneName = "spine_03"
@@ -4728,187 +4728,84 @@ _G.AimTouch = function()
         elseif boneIdx == 4 then selBoneName = "pelvis" end
 
         for i, target in ipairs(enemies) do
-            local skip = false
-
-            if not slua.isValid(target) then skip = true end
-
-            if not skip then
-                pcall(function()
-                    if slua.isValid(target.Mesh) then
-                        target.Mesh.MeshComponentUpdateFlag = 0
-                    end
-                end)
-            end
-
-            if not skip and igKnock and target.HealthStatus == 1 then skip = true end
-
-            if not skip and igBot then
+            if not slua.isValid(target) then goto continue end
+            
+            pcall(function()
+                if slua.isValid(target.Mesh) then
+                    target.Mesh.MeshComponentUpdateFlag = 0
+                end
+            end)
+            
+            if igKnock and target.HealthStatus == 1 then goto continue end
+            
+            if igBot then
                 local tIsBot = false
                 if target.bIsAI == true or target.IsAI == true then tIsBot = true end
                 local pState = target.PlayerState
                 if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
-                if tIsBot then skip = true end
+                if tIsBot then goto continue end
             end
-
-            -- VISIBILITY CHECK (cached 0.2s per enemy)
-                        -- VISIBILITY CHECK (FIXED — head bone screen projection)
-                        -- VISIBILITY CHECK (FIXED — real line trace, cover block karega)
-            if not skip and useVisCheck then
-                local tId = GetSafeEnemyKey(target)
+            
+            if useVisCheck then
+                local curTime = os.clock()
+                local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                local cached = _G.AimTouchVisCache[tId]
-                local nowT = os.clock()
-                
-                if not cached or (nowT - (cached.t or 0)) > 0.1 then
-                    local hidden = true   -- DEFAULT HIDDEN (fail-safe)
-                    
-                    pcall(function()
-                        -- 1. Head bone position
-                        local headPos = nil
-                        if type(target.GetBonePos) == "function" then
-                            headPos = target:GetBonePos("head", {X=0,Y=0,Z=0})
-                        end
-                        if not headPos and type(target.GetSocketLocation) == "function" then
-                            headPos = target:GetSocketLocation("head")
-                        end
-                        if not headPos then
-                            headPos = target:K2_GetActorLocation()
-                            if headPos then headPos.Z = headPos.Z + 70 end
-                        end
-                        if not headPos then return end
-                        
-                        -- 2. Camera location
-                        local UGameplayStatics = import("GameplayStatics")
-                        local camMgr = UGameplayStatics.GetPlayerCameraManager(pc, 0)
-                        if not slua.isValid(camMgr) then return end
-                        local camLoc = camMgr:GetCameraLocation()
-                        if not camLoc then return end
-                        
-                        -- 3. Screen projection check (enemy screen pe hai?)
-                        local FVector2D = import("Vector2D")
-                        local screen = FVector2D()
-                        local onScreen = false
-                        pcall(function()
-                            onScreen = pc:ProjectWorldLocationToScreen(headPos, screen, false)
-                        end)
-                        if not onScreen or screen.X <= 0 or screen.Y <= 0 then
-                            hidden = true
-                            return
-                        end
-                        
-                        -- 4. REAL LINE TRACE — camera se head tak
-                        local KismetSystemLibrary = import("KismetSystemLibrary")
-                        local hitResult = import("HitResult")()
-                        
-                        -- Trace params: ignore self + ignore target
-                        local ignoreActors = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
-ignoreActors:Add(player)
-ignoreActors:Add(target)
-                        
-                                                local traceHit = false
-                        pcall(function()
-                            traceHit = KismetSystemLibrary.LineTraceSingle(
-                                player,           -- WorldContext
-                                camLoc,                -- Start
-                                headPos,               -- End
-                                UEnums.ETraceTypeQuery.TraceTypeQuery1,  -- Visibility channel
-                                false,                 -- bTraceComplex
-                                ignoreActors,          -- ActorsToIgnore
-                                UEnums.EDrawDebugTrace.None,
-                                hitResult,             -- OutHit
-                                true                   -- bIgnoreSelf
-                            )
-                        end)
-
-                        -- 5. Agar wall/cover hit hua → hidden
-                        if traceHit and hitResult and slua.isValid(hitResult.Actor) then
-                            if hitResult.Actor ~= target then
-                                hidden = true
-                            else
-                                hidden = false
-                            end
-                        else
-                            hidden = true
-                        end
-                    end)  -- pcall ka end
-
-                    cached = { hidden = hidden, t = nowT }
-                    _G.AimTouchVisCache[tId] = cached
+                if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
+                    local isHidden = true
+                    pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
+                    _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
                 end
-
-                if cached and cached.hidden then skip = true end
+                if _G.AimTouchVisCache[tId].hidden then goto continue end
             end
-
-            -- TARGET POSITION
-            if not skip then
-                local tPos = nil
-                pcall(function()
-                    if type(target.GetBonePos) == "function" then
-                        tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
-                    end
-                end)
-                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                    pcall(function()
-                        if type(target.GetSocketLocation) == "function" then
-                            tPos = target:GetSocketLocation(selBoneName)
-                        end
-                    end)
+            
+            local tPos = target:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
+                if type(target.GetSocketLocation) == "function" then
+                    tPos = target:GetSocketLocation(selBoneName)
                 end
-                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                    pcall(function()
-                        if type(target.K2_GetActorLocation) == "function" then
-                            tPos = target:K2_GetActorLocation()
-                            if tPos then
-                                if boneIdx == 1 then tPos.Z = tPos.Z + 70
-                                elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
-                                elseif boneIdx == 3 then tPos.Z = tPos.Z + 20 end
-                            end
-                        end
-                    end)
-                end
-
-                if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
-                    skip = true
-                end
-
-                if not skip then
-                    local screen = FVector2D()
-                    local success = false
-                    pcall(function()
-                        success = pc:ProjectWorldLocationToScreen(tPos, screen, false)
-                    end)
-                    if not success or screen.X <= 0 or screen.Y <= 0 then
-                        skip = true
-                    else
-                        local dx = screen.X - centerX
-                        local dy = screen.Y - centerY
-                        local distScreen = math.sqrt(dx*dx + dy*dy)
-                        if distScreen > FOV_RADIUS then
-                            skip = true
-                        else
-                            local currentScore = distScreen
-                            if prioMode == 2 then
-                                currentScore = player:GetDistanceTo(target)
-                            elseif prioMode == 3 then
-                                currentScore = target.Health or 100
-                            elseif prioMode == 4 then
-                                local hp = target.Health or 100
-                                local maxhp = target.HealthMax or 100
-                                if maxhp <= 0 then maxhp = 100 end
-                                currentScore = hp / maxhp
-                            end
-                            if currentScore < bestScore then
-                                bestScore = currentScore
-                                bestTarget = target
-                            end
-                        end
+            end
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then
+                if type(target.K2_GetActorLocation) == "function" then
+                    tPos = target:K2_GetActorLocation()
+                    if tPos then
+                        if boneIdx == 1 then tPos.Z = tPos.Z + 70
+                        elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
+                        elseif boneIdx == 3 then tPos.Z = tPos.Z + 20 end
                     end
                 end
             end
-        end -- closes for i, target in ipairs(enemies) do
-
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
+            
+            local screen = FVector2D()
+            local success = pc:ProjectWorldLocationToScreen(tPos, screen, false)
+            if not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
+            
+            local dx = screen.X - centerX
+            local dy = screen.Y - centerY
+            local distScreen = math.sqrt(dx*dx + dy*dy)
+            
+            if distScreen > FOV_RADIUS then goto continue end
+            
+            local currentScore = distScreen
+            if prioMode == 2 then currentScore = player:GetDistanceTo(target)
+            elseif prioMode == 3 then currentScore = target.Health or 100
+            elseif prioMode == 4 then 
+                local hp = target.Health or 100
+                local maxhp = target.HealthMax or 100
+                if maxhp <= 0 then maxhp = 100 end
+                currentScore = hp / maxhp
+            end
+            
+            if currentScore < bestScore then
+                bestScore = currentScore
+                bestTarget = target
+            end
+            
+            ::continue::
+        end
+        
         if not slua.isValid(bestTarget) then return end
-
+        
         local finalBonePos = bestTarget:GetBonePos(selBoneName, {X=0, Y=0, Z=0})
         if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then
             if type(bestTarget.GetSocketLocation) == "function" then
@@ -4926,17 +4823,17 @@ ignoreActors:Add(target)
             end
         end
         if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
-
+        
         if predVal > 0 then
             pcall(function()
                 local tVelocity = nil
                 if type(bestTarget.GetVelocity) == "function" then
                     tVelocity = bestTarget:GetVelocity()
                 end
-
+                
                 if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
                     local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
-                    local ToF = (distToEnemy / 800.0) * (predVal / 50.0)
+                    local ToF = (distToEnemy / 800.0) * (predVal / 50.0) 
                     finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
                     finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
                 end
@@ -4945,13 +4842,13 @@ ignoreActors:Add(target)
 
         local rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos)
         if not rot then return end
-
+        
         local currentRot = pc:GetControlRotation()
         if not currentRot then return end
-
+        
         local deltaYaw = rot.Yaw - currentRot.Yaw
         local deltaPitch = rot.Pitch - currentRot.Pitch
-
+        
         if isADS then
             local camRot = nil
             if type(camManager.GetCameraRotation) == "function" then
@@ -4967,7 +4864,7 @@ ignoreActors:Add(target)
         if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
         if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
         if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
-
+        
         local smoothFactor = 0.0
         if speedVal >= 100 then
             smoothFactor = 1.0
@@ -4975,10 +4872,10 @@ ignoreActors:Add(target)
             smoothFactor = (speedVal / 100.0) * 0.3
             if smoothFactor < 0.01 then smoothFactor = 0.01 end
         end
-
+        
         local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
         local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
-
+        
         if recoilCompVal > 0 and isFiring then
             local pullDownForce = (recoilCompVal / 50.0) * 1.5
             finalPitch = finalPitch - pullDownForce
@@ -4986,7 +4883,7 @@ ignoreActors:Add(target)
 
         local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
         pc:SetControlRotation(finalRot, "AimTouch")
-
+        
         if isShotgun and _G.GTLMODConfig.AimTouchSGAutoFire then
             pcall(function()
                 local distToTarget = player:GetDistanceTo(bestTarget) / 100
@@ -4996,18 +4893,18 @@ ignoreActors:Add(target)
                     if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
                     local wepMgr = player.WeaponManagerComponent
                     if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
-
+                    
                     local currentWep = player:GetCurrentWeapon()
-                    if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then
-                        currentWep:StartFire()
+                    if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
+                        currentWep:StartFire() 
                     end
                     _G.GTLMODState.IsAutoFiring = true
                 end
             end)
         end
 
-    end) -- closes pcall(function() ... end)
-end -- closes _G.AimTouch = function() ... end
+    end)
+end
 
 -- ========================================== 
 -- MAIN LOOP: EXTREMELY POWERFUL OPTIMIZED
