@@ -5305,8 +5305,7 @@ local function MainLoop()
                                 mid:SetVectorParameterValue("MainColor", finalColor)
                                 mid:SetVectorParameterValue("DiffuseColor", finalColor)
                                 mid:SetVectorParameterValue("EmissiveColor", finalColor)
-                                mid:SetVectorParameterValue("SkinColor", finalColor)
-                                mid:SetVectorParameterValue("ClothColor", finalColor)
+                               
                                 -- Brightness boost
                                 pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 10.0) end)
                                 pcall(function() mid:SetScalarParameterValue("EmissionStrength", 8.0) end)
