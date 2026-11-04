@@ -3655,7 +3655,7 @@ function _G.InitModMenuTab()
             { Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "CUSTOM IPAD VIEW", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadView end, SetFunc = function(c,v) _G.GTLMODConfig.IpadView = v return true end },
             { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = "   IPAD FOV (1-100)", ExpandHandle = "ModMenu_Ipad_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewFOV or 120) - 80 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewFOV = 80 + v return true end },
             { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("Ipad View Vehicle"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
-            { Key = "ModMenu_IpadViewVehicle_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
+            { Key = "ModMenu_IpadViewVeh_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
             { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "165 REAL FPS", GetFunc = function() return _G.GTLMODConfig.UnlockFPS end, SetFunc = function(c,v) _G.GTLMODConfig.UnlockFPS = v; if v then _G.GTLMODState.GraphicsUnlocked = false end return true end },
             { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.ColorBodyNew end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v; return true end },
             { Key = "ModMenu_BlackSky", UI = AliasMap.Switcher, Text = "BLACK SKY", GetFunc = function() return _G.GTLMODConfig.BlackSky end, SetFunc = function(c,v) _G.GTLMODConfig.BlackSky = v return true end },
@@ -3922,115 +3922,77 @@ end
 -- ==========================================
 -- IPAD VIEW / FOV CONTROLLER (FIXED)
 -- ==========================================
-local function ApplyIpadViewFOV(localPlayer, pc)
-    if not Valid(localPlayer) or not Valid(pc) then return end
+pcall(function()
+        local isAiming = false
+        if localPlayer.bIsWeaponAiming or localPlayer.bIsGunADS then isAiming = true end
 
-    -- Safe config access
-    local Cfg  = _G.GTLMODConfig or {}
-    local Data = _G.GTLMODState and _G.GTLMODState.CustomTextData or {}
-
-    -- Derive aiming state (original code used undefined `isAiming`)
-    local isAiming = false
-    pcall(function()
-        if localPlayer.bIsWeaponAiming ~= nil then
-            isAiming = localPlayer.bIsWeaponAiming == true
-        elseif localPlayer.bIsGunADS ~= nil then
-            isAiming = localPlayer.bIsGunADS == true
-        end
-    end)
-
-    -- Vehicle / camera components
-    local currentVehicle = nil
-    pcall(function()
-        currentVehicle = localPlayer.CurrentVehicle
-            or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
-    end)
-    local isInVehicle = Valid(currentVehicle) or (localPlayer.bIsInVehicle == true)
-
+        local currentVehicle = localPlayer.CurrentVehicle or (type(localPlayer.GetVehicle) == "function" and localPlayer:GetVehicle())
+        local isInVehicle = Valid(currentVehicle) or localPlayer.bIsInVehicle
         local uTPPCam = localPlayer.ThirdPersonCameraComponent
-    local uVehCam = localPlayer.VehicleCameraComponent
-    local camMgr  = pc.PlayerCameraManager
+        local uVehCam = localPlayer.VehicleCameraComponent
+        local camMgr = pc.PlayerCameraManager
 
-    -- Fallback: vehicle camera lives on the vehicle actor, not the pawn
-    if not Valid(uVehCam) and Valid(currentVehicle) then
-        pcall(function()
-            uVehCam = currentVehicle.VehicleCameraComponent
-                or currentVehicle.CameraComponent
-                or (type(currentVehicle.GetCameraComponent) == "function" and currentVehicle:GetCameraComponent())
-                or (type(currentVehicle.GetVehicleCamera) == "function" and currentVehicle:GetVehicleCamera())
-        end)
-    end
+        -- 1. Xá»¬ LÃ KHI ÄANG Má» SCOPE (NGáº®M Báº®N)
+        if isAiming then
+            if _G.GTLMODConfig.IpadViewScope and _G.GTLMODState.CustomTextData then
+                local targetScope = _G.GTLMODState.CustomTextData.IpadViewScopeFOV or 60
+                if type(pc.FOV) == "function" then pc:FOV(targetScope) end
+                if Valid(camMgr) then
+                    camMgr.DefaultFOV = targetScope
+                    if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetScope) end
+                end
+            else
+                -- Náº¿u táº¯t Ipad Scope, tráº£ láº¡i FOV tháº­t cá»§a Game Äá» ngáº¯m chuáº©n
+                if type(pc.FOV) == "function" then pc:FOV(0) end
+                if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
+            end
+            return -- Ngáº¯t logic Äi bá»/xe vÃ¬ Æ°u tiÃªn Scope
+        end
 
-    -- ---------- 1. SCOPE / ADS ----------
-    if isAiming then
-        -- NOTE: IpadViewScope / IpadViewScopeFOV were never defined in config.
-        -- Kept as opt-in extension so it doesn't break if user adds them.
-        if Cfg.IpadViewScope and Data.IpadViewScopeFOV then
-            local targetScope = tonumber(Data.IpadViewScopeFOV) or 60
-            if type(pc.FOV) == "function" then pcall(function() pc:FOV(targetScope) end) end
-            if Valid(camMgr) then
-                camMgr.DefaultFOV = targetScope
-                if type(camMgr.SetFOV) == "function" then
-                    pcall(function() camMgr:SetFOV(targetScope) end)
+        -- 2. Xá»¬ LÃ KHI KHÃNG NGáº®M Báº®N (ÄI Bá» HOáº¶C LÃI XE)
+        -- Phá»¥c há»i camera náº¿u trÆ°á»c ÄÃ³ vá»«a táº¯t Scope
+        if not isInVehicle or not _G.GTLMODConfig.IpadViewVehicle then
+            if type(pc.FOV) == "function" then pc:FOV(0) end
+            if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then camMgr:UnlockFOV() end
+        end
+
+        -- Äi Bá»
+        if not isInVehicle then
+            if _G.GTLMODConfig.IpadView and _G.GTLMODState.CustomTextData then
+                local targetTPP = _G.GTLMODState.CustomTextData.IpadViewFOV or 120
+                if Valid(uTPPCam) and uTPPCam.FieldOfView ~= targetTPP then 
+                    uTPPCam.FieldOfView = targetTPP 
+                end
+            else
+                if Valid(uTPPCam) and uTPPCam.FieldOfView ~= 90 then 
+                    uTPPCam.FieldOfView = 90 
                 end
             end
-        else
-            -- Restore native FOV so scope aim stays accurate
-            if type(pc.FOV) == "function" then pcall(function() pc:FOV(0) end) end
-            if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then
-                pcall(function() camMgr:UnlockFOV() end)
-            end
         end
-        return -- scope takes priority; skip on-foot / vehicle logic
-    end
 
-    -- ---------- 2. NON-AIM: reset camera if needed ----------
-    if not isInVehicle or not Cfg.IpadViewVehicle then
-        if type(pc.FOV) == "function" then pcall(function() pc:FOV(0) end) end
-        if Valid(camMgr) and type(camMgr.UnlockFOV) == "function" then
-            pcall(function() camMgr:UnlockFOV() end)
-        end
-    end
-
-    -- ---------- 3. ON FOOT ----------
-    if not isInVehicle then
-        if Cfg.IpadView and Data.IpadViewFOV then
-            local targetTPP = tonumber(Data.IpadViewFOV) or 120
-            if Valid(uTPPCam) and uTPPCam.FieldOfView ~= targetTPP then
-                uTPPCam.FieldOfView = targetTPP
-            end
-        else
-            if Valid(uTPPCam) and uTPPCam.FieldOfView ~= 90 then
-                uTPPCam.FieldOfView = 90
-            end
-        end
-    end
-
-    -- ---------- 4. IN VEHICLE ----------
-    if isInVehicle then
-        if Cfg.IpadViewVehicle and Data.IpadViewVehicleFOV then
-            local targetVeh = tonumber(Data.IpadViewVehicleFOV) or 120
-
-            if Valid(uVehCam) and uVehCam.FieldOfView ~= targetVeh then
-                uVehCam.FieldOfView = targetVeh
-            end
-
-            if targetVeh > 90 then
-                if type(pc.FOV) == "function" then pcall(function() pc:FOV(targetVeh) end) end
-                if Valid(camMgr) then
-                    camMgr.DefaultFOV = targetVeh
-                    if type(camMgr.SetFOV) == "function" then
-                        pcall(function() camMgr:SetFOV(targetVeh) end)
+        -- LÃ¡i Xe
+        if isInVehicle then
+            if _G.GTLMODConfig.IpadViewVehicle and _G.GTLMODState.CustomTextData then
+                local targetVeh = _G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120
+                
+                if Valid(uVehCam) and uVehCam.FieldOfView ~= targetVeh then 
+                    uVehCam.FieldOfView = targetVeh 
+                end
+                
+                if targetVeh > 90 then
+                    if type(pc.FOV) == "function" then pc:FOV(targetVeh) end
+                    if Valid(camMgr) then
+                        camMgr.DefaultFOV = targetVeh
+                        if type(camMgr.SetFOV) == "function" then camMgr:SetFOV(targetVeh) end
                     end
                 end
-            end
-        else
-            if Valid(uVehCam) and uVehCam.FieldOfView ~= 90 then
-                uVehCam.FieldOfView = 90
+            else
+                if Valid(uVehCam) and uVehCam.FieldOfView ~= 90 then 
+                    uVehCam.FieldOfView = 90 
+                end
             end
         end
-    end
-end
+    end)
     
 -- ========================================== 
 -- INITIALIZE THE ESP SYSTEM (BASED)
