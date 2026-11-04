@@ -2321,7 +2321,6 @@ local GLOBAL_CONNECTIONS = {
 -- ========================================== 
 _G.GTLMODConfig = _G.GTLMODConfig or { 
     AutoHead = false, 
-    CustomMagicBullet = false,
     EspVip = false, 
     EspDistance = true, 
     EspVipPro = false, 
@@ -2497,76 +2496,6 @@ function _G.InitializeAutoHeadHooks()
             end
         end
     end)
-end
--- ==========================================
--- MAGIC BULLET — actual damage multiplier
--- ==========================================
-_G.ApplyMagicBullet = function(weapon)
-    if not slua.isValid(weapon) then return end
-
-    local enabled = _G.GTLMODConfig.CustomMagicBullet == true
-    local data = _G.GTLMODState.CustomTextData or {}
-    local headMul = enabled and (tonumber(data.MagicHead) or 1.0) or 1.0
-    local bodyMul = enabled and (tonumber(data.MagicBody) or 1.0) or 1.0
-    local legsMul = enabled and (tonumber(data.MagicLegs) or 1.0) or 1.0
-
-    local entities = {}
-    if Valid(weapon.ShootWeaponEntity_GEN_VARIABLE) then table.insert(entities, weapon.ShootWeaponEntity_GEN_VARIABLE) end
-    if Valid(weapon.ShootWeaponEntity) then table.insert(entities, weapon.ShootWeaponEntity) end
-    if Valid(weapon.ShootWeaponComponent) and Valid(weapon.ShootWeaponComponent.ShootWeaponEntityComponent) then
-        table.insert(entities, weapon.ShootWeaponComponent.ShootWeaponEntityComponent)
-    end
-
-    -- All damage fields we try, in priority order
-    local damageFields = { "BaseDamage", "Damage", "DamageValue", "WeaponDamage", "BaseDamageValue" }
-
-    -- Feature off -> restore and bail
-    if headMul == 1.0 and bodyMul == 1.0 and legsMul == 1.0 then
-        for _, entity in ipairs(entities) do
-            if entity.GTLMODMagicApplied and entity.OriginalMagicCached then
-                pcall(function()
-                    for _, f in ipairs(damageFields) do
-                        if entity.OriginalMagicCached[f] ~= nil then
-                            entity[f] = entity.OriginalMagicCached[f]
-                        end
-                    end
-                end)
-                entity.GTLMODMagicApplied = false
-            end
-        end
-        return
-    end
-
-    local avg = (headMul + bodyMul + legsMul) / 3.0
-
-    for _, entity in ipairs(entities) do
-        pcall(function()
-            if not entity.OriginalMagicCached then
-                entity.OriginalMagicCached = {}
-                for _, f in ipairs(damageFields) do
-                    local ok, val = pcall(function() return entity[f] end)
-                    if ok and type(val) == "number" and val > 0 then
-                        entity.OriginalMagicCached[f] = val
-                    end
-                end
-            end
-
-            -- Apply multiplier to whatever numeric damage field exists
-            for _, f in ipairs(damageFields) do
-                local base = entity.OriginalMagicCached[f]
-                if base and base > 0 then
-                    pcall(function() entity[f] = base * avg end)
-                end
-            end
-
-            -- Extra per-part scale fields if present
-            pcall(function() if entity.HeadDamageScale ~= nil then entity.HeadDamageScale = headMul end end)
-            pcall(function() if entity.BodyDamageScale ~= nil then entity.BodyDamageScale = bodyMul end end)
-            pcall(function() if entity.LegDamageScale ~= nil then entity.LegDamageScale = legsMul end end)
-
-            entity.GTLMODMagicApplied = true
-        end)
-    end
 end
 
 local function GetConfigPaths(fileName)
@@ -3575,11 +3504,11 @@ function _G.InitModMenuTab()
         
         -- ==================== ESP VISUAL (SECTION 1 - FIRST) ====================
         local StackESPVisual = {
-            { Key = "ModMenu_ESP1", UI = AliasMap.Switcher, Text = "ESP SKELETON BOX", GetFunc = function() return _G.GTLMODConfig.EspVip end, SetFunc = function(c,v) _G.GTLMODConfig.EspVip = v return true end },
-            { Key = "ModMenu_ESP7", UI = AliasMap.Switcher, Text = "ESP REAL ENEMY/BOT", GetFunc = function() return _G.GTLMODConfig.Esp7 end, SetFunc = function(c,v) _G.GTLMODConfig.Esp7 = v return true end },
+            { Key = "ModMenu_ESP1", UI = AliasMap.Switcher, Text = "NEW ESP V1", GetFunc = function() return _G.GTLMODConfig.EspVip end, SetFunc = function(c,v) _G.GTLMODConfig.EspVip = v return true end },
+            { Key = "ModMenu_ESP7", UI = AliasMap.Switcher, Text = "ESP COUNTER NEW", GetFunc = function() return _G.GTLMODConfig.Esp7 end, SetFunc = function(c,v) _G.GTLMODConfig.Esp7 = v return true end },
             { Key = "ModMenu_ESP2", UI = AliasMap.Switcher, Text = "ESP ENEMY DISTANCE", GetFunc = function() return _G.GTLMODConfig.EspDistance end, SetFunc = function(c,v) _G.GTLMODConfig.EspDistance = v return true end },
             { Key = "ModMenu_ESP4", UI = AliasMap.Switcher, Text = "ESP HIT MARK", GetFunc = function() return _G.GTLMODConfig.EspRadar end, SetFunc = function(c,v) _G.GTLMODConfig.EspRadar = v return true end },
-            { Key = "ModMenu_ESP5", UI = AliasMap.Switcher, Text = "ESP BOX", GetFunc = function() return _G.GTLMODConfig.Esp5 end, SetFunc = function(c,v) _G.GTLMODConfig.Esp5 = v return true end },
+        --    { Key = "ModMenu_ESP5", UI = AliasMap.Switcher, Text = "ESP BOX", GetFunc = function() return _G.GTLMODConfig.Esp5 end, SetFunc = function(c,v) _G.GTLMODConfig.Esp5 = v return true end },
             { Key = "ModMenu_ESPAntenna", UI = AliasMap.Switcher, Text = "ESP GREEN ANTENNA", GetFunc = function() return _G.GTLMODConfig.EspAntenna end, SetFunc = function(c,v) _G.GTLMODConfig.EspAntenna = v return true end },
             { Key = "ModMenu_ESPName", UI = AliasMap.Switcher, Text = "ESP NAME (VISIBLE)", GetFunc = function() return _G.GTLMODConfig.EspName end, SetFunc = function(c,v) _G.GTLMODConfig.EspName = v return true end },
             { Key = "ModMenu_ESPOutline_Ex", UI = AliasMap.TitleSwitcher, Text = "ESP ENEMY (RED AURA)", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.EspOutline end, SetFunc = function(c,v) _G.GTLMODConfig.EspOutline = v return true end },
@@ -3643,19 +3572,13 @@ function _G.InitModMenuTab()
             { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Movement Prediction (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.GTLMODState.CustomTextData.AimTouchSniperPred or 0 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.AimTouchSniperPred = v return true end }
         }
         
-        local StackMagicBullet = {
-            { Key = "ModMenu_Magic_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Custom Magic Bullet (Don't use Global users risk)", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.CustomMagicBullet end, SetFunc = function(c,v) _G.GTLMODConfig.CustomMagicBullet = v return true end },
-            { Key = "ModMenu_Magic_Head", UI = AliasMap.Slider, Text = "   Head Damage (30 - 60 safe)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.GTLMODState.CustomTextData.MagicHead or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.MagicHead = (v / 100.0) * 5.0 return true end },
-            { Key = "ModMenu_Magic_Body", UI = AliasMap.Slider, Text = "   Body Damage (20 - 30 safe/Over 30 will hit behind the cover)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.GTLMODState.CustomTextData.MagicBody or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.MagicBody = (v / 100.0) * 5.0 return true end },
-            { Key = "ModMenu_Magic_Legs", UI = AliasMap.Slider, Text = "   Legs Damage (No need to change)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.GTLMODState.CustomTextData.MagicLegs or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.MagicLegs = (v / 100.0) * 5.0 return true end }
-        }
 
         -- ==================== COMBAT GRAPHIC (SECTION 3) ====================
         local StackCombatGraphic = {
             { Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "CUSTOM IPAD VIEW", ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadView end, SetFunc = function(c,v) _G.GTLMODConfig.IpadView = v return true end },
             { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = "   IPAD FOV (1-100)", ExpandHandle = "ModMenu_Ipad_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewFOV or 120) - 80 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewFOV = 80 + v return true end },
-            { Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("Ipad View Vehicle"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
-            { Key = "ModMenu_IpadViewVeh_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
+            --{ Key = "ModMenu_IpadViewVehicle_Ex", UI = AliasMap.TitleSwitcher, Text = ("Ipad View Vehicle"), ExpandIndex = 0, GetFunc = function() return _G.GTLMODConfig.IpadViewVehicle end, SetFunc = function(c,v) _G.GTLMODConfig.IpadViewVehicle = v return true end },
+           -- { Key = "ModMenu_IpadViewVeh_FOV", UI = AliasMap.Slider, Text = ("Vehicle FOV Value"), ExpandHandle = "ModMenu_IpadViewVehicle_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.GTLMODState.CustomTextData.IpadViewVehicleFOV or 120) - 90 end, SetFunc = function(c,v) _G.GTLMODState.CustomTextData.IpadViewVehicleFOV = 90 + v return true end },
             { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "165 REAL FPS", GetFunc = function() return _G.GTLMODConfig.UnlockFPS end, SetFunc = function(c,v) _G.GTLMODConfig.UnlockFPS = v; if v then _G.GTLMODState.GraphicsUnlocked = false end return true end },
             { Key = "ModMenu_colorbodynew", UI = AliasMap.Switcher, Text = "WALLHACK V3", GetFunc = function() return _G.GTLMODConfig.ColorBodyNew end, SetFunc = function(c,v) _G.GTLMODConfig.colorbodynew = v; _G.GTLMODConfig.ColorBodyNew = v; return true end },
             { Key = "ModMenu_BlackSky", UI = AliasMap.Switcher, Text = "BLACK SKY", GetFunc = function() return _G.GTLMODConfig.BlackSky end, SetFunc = function(c,v) _G.GTLMODConfig.BlackSky = v return true end },
@@ -3697,7 +3620,6 @@ function _G.InitModMenuTab()
             Category = {
                 { Key = "Cat_ESP_Visual", Text= "♛ ESP ♛", Stack = StackESPVisual },
                 { Key = "Cat_Aimbot_Force", Text= "♛AIMBOT♛", Stack = StackAimbotForce },
-                { Key = "Cat_Magic_Bullet", Text= "MAGIC + HEADSHOT", Stack = StackMagicBullet },
                 { Key = "Cat_Combat_Graphic", Text= "♛EXTRA COMBO♛", Stack = StackCombatGraphic },
                 { Key = "Cat_SkinMod", Text= "♛ALL SKIN♛", Stack = StackSkinMod }
             }
@@ -5437,23 +5359,7 @@ end
         end
     end)
     
-        -- ── Magic Bullet (damage multiplier) ──
-    pcall(function()
-        local weapon = nil
-        pcall(function()
-            local weaponManager = localPlayer.WeaponManagerComponent
-            if Valid(weaponManager) and type(weaponManager.GetCurrentWeapon) == "function" then
-                weapon = weaponManager:GetCurrentWeapon()
-            end
-        end)
-        if not Valid(weapon) then
-            if type(localPlayer.GetCurrentShootWeapon) == "function" then weapon = localPlayer:GetCurrentShootWeapon()
-            elseif type(localPlayer.GetCurrentWeapon) == "function" then weapon = localPlayer:GetCurrentWeapon() end
-        end
-        if Valid(weapon) and _G.ApplyMagicBullet then
-            _G.ApplyMagicBullet(weapon)
-        end
-    end)
+       
 
     pcall(function()
         local allCharacters = {}
