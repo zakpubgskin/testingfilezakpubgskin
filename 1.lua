@@ -4261,29 +4261,75 @@ end
 -- ==========================================
 local function ApplyColorBodyV2(enemy, pc, markData)
     pcall(function()
+        -- Get localPlayer for trace ignore
+        local localPlayer = nil
+        pcall(function()
+            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+            if GameplayData and GameplayData.GetPlayerCharacter then
+                localPlayer = GameplayData.GetPlayerCharacter()
+            end
+        end)
+        if not Valid(localPlayer) then return end
+        
         local meshes = GetAllSkeletalMeshes(enemy, markData)
         if #meshes == 0 then return end
         
+        -- ==========================================
+        -- VISIBILITY CHECK (REAL LINE TRACE)
+        -- Wall ke peeche = RED, saamne = GREEN
+        -- ==========================================
         local curTime = os.clock()
-        if markData.LastVisCheckTime == nil or (curTime - markData.LastVisCheckTime) > 0.3 then
+        if markData.LastVisCheckTime == nil or (curTime - markData.LastVisCheckTime) > 0.1 then
             markData.LastVisCheckTime = curTime
-            local isHidden = true
+            local isHidden = true   -- default hidden (fail-safe)
+            
             pcall(function()
-                if Valid(pc) and type(pc.LineOfSightTo) == "function" then
-                    if pc:LineOfSightTo(enemy) then isHidden = false else isHidden = true end
+                local traceHit = false
+                pcall(function()
+                    traceHit = KismetSystemLibrary.LineTraceSingle(
+                        localPlayer,        -- ✅ FIX: localplayer → localPlayer
+                        pc:GetCameraLocation(),  -- start (approx)
+                        enemy:K2_GetActorLocation(),  -- end
+                        UEnums.ETraceTypeQuery.TraceTypeQuery1,
+                        false,
+                        nil,
+                        UEnums.EDrawDebugTrace.None,
+                        import("HitResult")(),
+                        true
+                    )
+                end)
+                
+                if traceHit then
+                    isHidden = true
+                else
+                    isHidden = false
                 end
+                
+                -- Fallback: agar trace fail ho jaye
+                pcall(function()
+                    if type(pc.LineOfSightTo) == "function" then
+                        isHidden = not pc:LineOfSightTo(enemy)
+                    end
+                end)
             end)
+            
             markData.CachedHiddenState = isHidden
         end
         
         local hidden = markData.CachedHiddenState
         if hidden == nil then hidden = true end
         
+        -- 🔥 MAX BRIGHTNESS COLORS
         local BRIGHT_RED   = {R=1.0, G=0.0, B=0.0, A=1.0}
         local BRIGHT_GREEN = {R=0.0, G=1.0, B=0.0, A=1.0}
-        
+        local BRIGHT_CYAN  = {R=0.0, G=1.0, B=1.0, A=1.0}
+        local BRIGHT_YELLOW = {R=1.0, G=1.0, B=0.0, A=1.0}
+
         local finalColor = hidden and BRIGHT_RED or BRIGHT_GREEN
         
+        -- ==========================================
+        -- COLOR APPLY (existing logic — unchanged)
+        -- ==========================================
         local colorHash = string.format("%d_%d_%d", finalColor.R, finalColor.G, finalColor.B)
         local currentMeshCount = #meshes
         local isMeshChanged = (markData.LastMeshCount ~= currentMeshCount)
@@ -4342,6 +4388,7 @@ local function ApplyColorBodyV2(enemy, pc, markData)
                                 mid:SetVectorParameterValue("DiffuseColor", finalColor)
                                 mid:SetVectorParameterValue("EmissiveColor", finalColor)
                                 
+                                -- 🔥 BRIGHTNESS BOOST PARAMETERS
                                 pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 10.0) end)
                                 pcall(function() mid:SetScalarParameterValue("EmissionStrength", 8.0) end)
                                 pcall(function() mid:SetScalarParameterValue("LightIntensity", 5.0) end)
