@@ -4862,26 +4862,36 @@ local function MainLoop()
             end
         end)
     end
-        local function ApplyColorBodyNew(enemy, markData)
+        -- ==========================================
+-- COLORBODYNEW — WOW/TDM WALL-PIERCE FIX
+-- (all-map dyeing + WOW/TDM MID fallback)
+-- ==========================================
+
+local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
-        -- Console commands (WOW-safe) — sirf ek baar
+        -- ─────────────────────────────────────────────
+        -- Console flags (sirf ek baar set hote hain)
+        -- ─────────────────────────────────────────────
         if not _G.ConsoleNewWallReady then
-            local KismetSystemLibrary = import("KismetSystemLibrary")
+            local KSL = import("KismetSystemLibrary")
             local world = slua.getWorld()
-            if KismetSystemLibrary and world then
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CustomDepth 3")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
+            if KSL and world then
+                KSL.ExecuteConsoleCommand(world, "r.EnableDrawDyeingColor 1")
+                KSL.ExecuteConsoleCommand(world, "r.CustomDepth 3")
+                KSL.ExecuteConsoleCommand(world, "r.IdeaOutline.Enable 1")
+                KSL.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
                 -- WOW / TDM ke liye extra safety flags
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CustomDepth.StencilEnable 1")
-                KismetSystemLibrary.ExecuteConsoleCommand(world, "r.CustomDepthTemporalAAJitter 0")
+                KSL.ExecuteConsoleCommand(world, "r.CustomDepth.StencilEnable 1")
+                KSL.ExecuteConsoleCommand(world, "r.CustomDepthTemporalAAJitter 0")
                 _G.ConsoleNewWallReady = true
             end
         end
 
+        -- ─────────────────────────────────────────────
+        -- Mesh collect
+        -- ─────────────────────────────────────────────
         local meshes = GetAllSkeletalMeshes(enemy, markData)
-        
+
         local weapon = nil
         pcall(function() weapon = enemy:GetCurrentWeapon() end)
         if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
@@ -4890,37 +4900,42 @@ local function MainLoop()
 
         local isBot = markData.AK_IS_BOT or false
         local currentMeshCount = #meshes
-        
-        -- Cache: dyeing support check per mesh set
+        if currentMeshCount == 0 then return end
+
+        -- ─────────────────────────────────────────────
+        -- Cache — skip only if dyeing path worked AND mesh set unchanged
+        -- ─────────────────────────────────────────────
         local stateHash = (isBot and "BOT" or "PLAYER") .. "_" .. tostring(currentMeshCount)
-        
+
         if markData.LastColorNewHash == stateHash and markData.ColorNewApplied then
-            -- Even cached: WOW/TDM pe MID path ko ensure karo (silently fail ho chuka ho sakta hai)
-            -- So skip only if MID path already verified
+            -- WOW/TDM pe dyeing fail hoti hai to har frame MID re-apply karo
             if markData.WowFallbackVerified ~= false then
                 return
             end
         end
-        
+
         markData.LastColorNewHash = stateHash
         markData.ColorNewApplied = true
 
+        -- ─────────────────────────────────────────────
         -- Colors (0-255 RGB range)
-        local LinearColorClass = import("LinearColor") or _G.FLinearColor
-        local c_vis = LinearColorClass and LinearColorClass(0, 100, 0, 1) or {R=0, G=100, B=0, A=1}
-        local c_occ = LinearColorClass and LinearColorClass(100, 0, 0, 1) or {R=100, G=0, B=0, A=1}
-        local c_bVis = LinearColorClass and LinearColorClass(49, 48, 0, 100) or {R=49, G=48, B=0, A=100}
-        local c_bOcc = LinearColorClass and LinearColorClass(9, 1.5, 45, 100) or {R=9, G=1.5, B=45, A=100}
+        -- ─────────────────────────────────────────────
+        local LC = import("LinearColor") or _G.FLinearColor
+        local c_vis  = LC and LC(0, 100, 0, 1)      or {R=0, G=100, B=0, A=1}
+        local c_occ  = LC and LC(100, 0, 0, 1)      or {R=100, G=0, B=0, A=1}
+        local c_bVis = LC and LC(49, 48, 0, 100)    or {R=49, G=48, B=0, A=100}
+        local c_bOcc = LC and LC(9, 1.5, 45, 100)   or {R=9, G=1.5, B=45, A=100}
 
         local visColor = isBot and c_bVis or c_vis
         local occColor = isBot and c_bOcc or c_occ
 
-        -- WOW/TDM detection + fallback verification flag
         local dyeingWorked = false
 
         for meshIndex, mesh in ipairs(meshes) do
             if Valid(mesh) then
-                -- === PATH A: Dyeing (all-map standard) ===
+                -- ═══════════════════════════════════════════
+                -- PATH A: Dyeing (all-map standard)
+                -- ═══════════════════════════════════════════
                 pcall(function()
                     if type(mesh.SetDrawDyeing) == "function" then
                         mesh:SetDrawDyeing(true)
@@ -4947,169 +4962,178 @@ local function MainLoop()
                     end
                 end)
 
-                -- === PATH B: WOW/TDM FALLBACK — CustomDepth + MID ===
-                -- Agar dyeing kaam nahi kiya (WOW/TDM) to MID path force karo
-                -- === PATH B: WOW/TDM FALLBACK — CustomDepth + MID ===
-if not dyeingWorked then
-    pcall(function()
-        -- CustomDepth always set
-        if type(mesh.SetRenderCustomDepth) == "function" then
-            mesh:SetRenderCustomDepth(true)
-        end
-        if type(mesh.SetCustomDepthStencilValue) == "function" then
-            mesh:SetCustomDepthStencilValue(255)
-        end
-    end)
-
-    -- MID color override (ye WOW/TDM pe actually render hota hai)
-    if not markData.WowMIDs then markData.WowMIDs = {} end
-    local meshKey = "WowMesh_" .. tostring(meshIndex)
-    if not markData.WowMIDs[meshKey] then markData.WowMIDs[meshKey] = {} end
-
-    for i = 0, 10 do
-        local matInterface = mesh:GetMaterial(i)
-        if not Valid(matInterface) then break end
-        local baseMat = matInterface:GetBaseMaterial()
-        if Valid(baseMat) then
-            local matName = tostring(baseMat)
-            if string.find(matName, "Master_Mask", 1, true)
-                or string.find(matName, "Master", 1, true)
-                or string.find(matName, "Character", 1, true) then
-
-                -- ═══════════════════════════════════════════════════
-                -- 🔥 WALL PIERCE FIX — depth test off + translucent
-                -- ═══════════════════════════════════════════════════
-                pcall(function()
-                    baseMat.bDisableDepthTest = true
-                    baseMat.BlendMode = 2          -- Translucent
-                    baseMat.bIsUI = false
-                end)
-                pcall(function()
-                    if type(mesh.SetRenderCustomDepth) == "function" then
-                        mesh:SetRenderCustomDepth(true)
-                    end
-                    if type(mesh.SetCustomDepthStencilValue) == "function" then
-                        mesh:SetCustomDepthStencilValue(255)
-                    end
-                end)
-                -- ═══════════════════════════════════════════════════
-
-                local mid = markData.WowMIDs[meshKey][i]
-                if not Valid(mid) then
-                    mid = mesh:CreateAndSetMaterialInstanceDynamic(i)
-                    markData.WowMIDs[meshKey][i] = mid
-                end
-                if Valid(mid) then
-                    -- 🔥 MID pe bhi depth test off + translucent
-                    pcall(function() mid:SetScalarParameterValue("bDisableDepthTest", 1) end)
-                    pcall(function() mid:SetScalarParameterValue("BlendMode", 2) end)
-
-                    -- Broad parameter set (WOW/TDM ke materials ke liye)
-                    pcall(function() mid:SetVectorParameterValue("颜色", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("Extra Light Color", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("Para_Color", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("Para_ColorTint", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("Para_Color_1", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("Tint", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("Color", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("BaseColor", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("BodyColor", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("MainColor", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("DiffuseColor", visColor) end)
-                    pcall(function() mid:SetVectorParameterValue("EmissiveColor", visColor) end)
-                    -- Emissive boost (WOW pe visibility ke liye)
-                    pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 5.0) end)
-                    pcall(function() mid:SetScalarParameterValue("EmissionStrength", 5.0) end)
-                    pcall(function() mid:SetScalarParameterValue("LightIntensity", 3.0) end)
-                    pcall(function() mid:SetScalarParameterValue("GlowIntensity", 5.0) end)
-                    pcall(function() mid:SetScalarParameterValue("Brightness", 3.0) end)
-                    pcall(function() mid:SetScalarParameterValue("ColorIntensity", 3.0) end)
-                    -- 🔥 Opacity boost (translucent pe fade na ho)
-                    pcall(function() mid:SetScalarParameterValue("Opacity", 1.0) end)
-                    pcall(function() mid:SetScalarParameterValue("OpacityMultiplier", 1.0) end)
-                    pcall(function() mid:SetScalarParameterValue("Alpha", 1.0) end)
-                end
-            end
-        end
-    end
-end
-
-        -- Mark whether dyeing path worked (for cache logic)
-        markData.WowFallbackVerified = dyeingWorked
-    end)
-end
-local function UndoColorBodyNew(enemy, markData)
-    pcall(function()
-        if markData.ColorNewApplied then
-            local meshes = GetAllSkeletalMeshes(enemy, markData)
-            local weapon = nil
-            pcall(function() weapon = enemy:GetCurrentWeapon() end)
-            if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
-                table.insert(meshes, weapon.Mesh)
-            end
-
-            for meshIndex, mesh in ipairs(meshes) do
-                if Valid(mesh) then
-                    -- Disable dyeing path
+                -- ═══════════════════════════════════════════
+                -- PATH B: WOW/TDM FALLBACK — CustomDepth + MID
+                -- 🔥 wall-pierce: bDisableDepthTest + Translucent
+                -- ═══════════════════════════════════════════
+                if not dyeingWorked then
                     pcall(function()
-                        if type(mesh.SetDrawDyeing) == "function" then
-                            mesh:SetDrawDyeing(false)
-                            mesh:SetDrawHighlight(false)
-                            mesh:SetDrawIdeaOutline(false)
-                            mesh:SetRenderCustomDepth(false)
+                        if type(mesh.SetRenderCustomDepth) == "function" then
+                            mesh:SetRenderCustomDepth(true)
+                        end
+                        if type(mesh.SetCustomDepthStencilValue) == "function" then
+                            mesh:SetCustomDepthStencilValue(255)
                         end
                     end)
 
-                    -- Restore WOW/TDM MID colors
+                    if not markData.WowMIDs then markData.WowMIDs = {} end
                     local meshKey = "WowMesh_" .. tostring(meshIndex)
-                    if markData.WowMIDs and markData.WowMIDs[meshKey] then
-                        -- restore base material depth settings
-                        for i = 0, 10 do
-                            local matInterface = mesh:GetMaterial(i)
-                            if not Valid(matInterface) then break end
-                            local baseMat = matInterface:GetBaseMaterial()
-                            if Valid(baseMat) then
-                                pcall(function()
-                                    baseMat.bDisableDepthTest = false
-                                    baseMat.BlendMode = 0
-                                end)
-                            end
-                        end
+                    if not markData.WowMIDs[meshKey] then markData.WowMIDs[meshKey] = {} end
 
-                        for i, mid in pairs(markData.WowMIDs[meshKey]) do
-                            if Valid(mid) then
-                                local defC = {R=1, G=1, B=1, A=1}
-                                pcall(function() mid:SetVectorParameterValue("颜色", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("Extra Light Color", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("Para_Color", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("Para_ColorTint", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("Para_Color_1", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("Tint", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("Color", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("BaseColor", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("BodyColor", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("MainColor", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("DiffuseColor", defC) end)
-                                pcall(function() mid:SetVectorParameterValue("EmissiveColor", defC) end)
-                                pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 1.0) end)
-                                pcall(function() mid:SetScalarParameterValue("EmissionStrength", 1.0) end)
-                                pcall(function() mid:SetScalarParameterValue("LightIntensity", 1.0) end)
-                                pcall(function() mid:SetScalarParameterValue("GlowIntensity", 1.0) end)
-                                pcall(function() mid:SetScalarParameterValue("Brightness", 1.0) end)
-                                pcall(function() mid:SetScalarParameterValue("ColorIntensity", 1.0) end)
-                                pcall(function() mid:SetScalarParameterValue("bDisableDepthTest", 0) end)
-                                pcall(function() mid:SetScalarParameterValue("BlendMode", 0) end)
+                    for i = 0, 10 do
+                        local matInterface = mesh:GetMaterial(i)
+                        if not Valid(matInterface) then break end
+                        local baseMat = matInterface:GetBaseMaterial()
+                        if Valid(baseMat) then
+                            local matName = tostring(baseMat)
+                            if string.find(matName, "Master_Mask", 1, true)
+                                or string.find(matName, "Master", 1, true)
+                                or string.find(matName, "Character", 1, true) then
+
+                                -- 🔥 Base material pe depth test off + translucent
+                                pcall(function()
+                                    baseMat.bDisableDepthTest = true
+                                    baseMat.BlendMode = 2          -- Translucent
+                                    baseMat.bIsUI = false
+                                end)
+                                pcall(function()
+                                    if type(mesh.SetRenderCustomDepth) == "function" then
+                                        mesh:SetRenderCustomDepth(true)
+                                    end
+                                    if type(mesh.SetCustomDepthStencilValue) == "function" then
+                                        mesh:SetCustomDepthStencilValue(255)
+                                    end
+                                end)
+
+                                local mid = markData.WowMIDs[meshKey][i]
+                                if not Valid(mid) then
+                                    mid = mesh:CreateAndSetMaterialInstanceDynamic(i)
+                                    markData.WowMIDs[meshKey][i] = mid
+                                end
+                                if Valid(mid) then
+                                    -- 🔥 MID pe bhi depth test off + translucent
+                                    pcall(function() mid:SetScalarParameterValue("bDisableDepthTest", 1) end)
+                                    pcall(function() mid:SetScalarParameterValue("BlendMode", 2) end)
+
+                                    -- Broad vector parameter set (WOW/TDM materials)
+                                    pcall(function() mid:SetVectorParameterValue("颜色", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Extra Light Color", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Para_Color", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Para_ColorTint", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Para_Color_1", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Tint", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Color", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("BaseColor", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("BodyColor", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("MainColor", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("DiffuseColor", visColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("EmissiveColor", visColor) end)
+                                    -- Emissive boost
+                                    pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 5.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("EmissionStrength", 5.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("LightIntensity", 3.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("GlowIntensity", 5.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("Brightness", 3.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("ColorIntensity", 3.0) end)
+                                    -- 🔥 Opacity — translucent pe fade na ho
+                                    pcall(function() mid:SetScalarParameterValue("Opacity", 1.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("OpacityMultiplier", 1.0) end)
+                                    pcall(function() mid:SetScalarParameterValue("Alpha", 1.0) end)
+                                end
                             end
                         end
-                        markData.WowMIDs[meshKey] = nil
                     end
                 end
             end
-            markData.WowMIDs = nil
-            markData.ColorNewApplied = false
-            markData.LastColorNewHash = ""
-            markData.WowFallbackVerified = nil
         end
+
+        -- Cache flag — agar dyeing fail hui to next frame MID re-apply hoga
+        markData.WowFallbackVerified = dyeingWorked
+    end)
+end
+
+
+local function UndoColorBodyNew(enemy, markData)
+    pcall(function()
+        if not markData.ColorNewApplied then return end
+
+        local meshes = GetAllSkeletalMeshes(enemy, markData)
+        local weapon = nil
+        pcall(function() weapon = enemy:GetCurrentWeapon() end)
+        if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
+            table.insert(meshes, weapon.Mesh)
+        end
+
+        for meshIndex, mesh in ipairs(meshes) do
+            if Valid(mesh) then
+                -- ────────────────────────────────────────
+                -- PATH A: Disable dyeing path
+                -- ────────────────────────────────────────
+                pcall(function()
+                    if type(mesh.SetDrawDyeing) == "function" then
+                        mesh:SetDrawDyeing(false)
+                        mesh:SetDrawHighlight(false)
+                        mesh:SetDrawIdeaOutline(false)
+                        mesh:SetRenderCustomDepth(false)
+                    end
+                end)
+
+                -- ────────────────────────────────────────
+                -- PATH B: Restore WOW/TDM MIDs + base materials
+                -- ────────────────────────────────────────
+                local meshKey = "WowMesh_" .. tostring(meshIndex)
+                if markData.WowMIDs and markData.WowMIDs[meshKey] then
+                    -- Restore base material depth settings
+                    for i = 0, 10 do
+                        local matInterface = mesh:GetMaterial(i)
+                        if not Valid(matInterface) then break end
+                        local baseMat = matInterface:GetBaseMaterial()
+                        if Valid(baseMat) then
+                            pcall(function()
+                                baseMat.bDisableDepthTest = false
+                                baseMat.BlendMode = 0    -- Opaque
+                            end)
+                        end
+                    end
+
+                    -- Restore MID params
+                    for i, mid in pairs(markData.WowMIDs[meshKey]) do
+                        if Valid(mid) then
+                            local defC = {R=1, G=1, B=1, A=1}
+                            pcall(function() mid:SetVectorParameterValue("颜色", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("Extra Light Color", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("Para_Color", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("Para_ColorTint", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("Para_Color_1", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("Tint", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("Color", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("BaseColor", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("BodyColor", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("MainColor", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("DiffuseColor", defC) end)
+                            pcall(function() mid:SetVectorParameterValue("EmissiveColor", defC) end)
+                            pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("EmissionStrength", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("LightIntensity", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("GlowIntensity", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("Brightness", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("ColorIntensity", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("bDisableDepthTest", 0) end)
+                            pcall(function() mid:SetScalarParameterValue("BlendMode", 0) end)
+                            pcall(function() mid:SetScalarParameterValue("Opacity", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("OpacityMultiplier", 1.0) end)
+                            pcall(function() mid:SetScalarParameterValue("Alpha", 1.0) end)
+                        end
+                    end
+                    markData.WowMIDs[meshKey] = nil
+                end
+            end
+        end
+
+        markData.WowMIDs = nil
+        markData.ColorNewApplied = false
+        markData.LastColorNewHash = ""
+        markData.WowFallbackVerified = nil
     end)
 end
     -- ========================================== 
