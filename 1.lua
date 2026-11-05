@@ -5061,48 +5061,56 @@ local function UndoColorBodyNew(enemy, markData)
                     end)
 
                     -- Restore WOW/TDM MID colors
-local meshKey = "WowMesh_" .. tostring(meshIndex)
-if markData.WowMIDs and markData.WowMIDs[meshKey] then
-    -- 🔥 restore base material depth settings
-    for i = 0, 10 do
-        local matInterface = mesh:GetMaterial(i)
-        if not Valid(matInterface) then break end
-        local baseMat = matInterface:GetBaseMaterial()
-        if Valid(baseMat) then
-            pcall(function()
-                baseMat.bDisableDepthTest = false
-                baseMat.BlendMode = 0    -- Opaque
-            end)
-        end
-    end
+                    local meshKey = "WowMesh_" .. tostring(meshIndex)
+                    if markData.WowMIDs and markData.WowMIDs[meshKey] then
+                        -- restore base material depth settings
+                        for i = 0, 10 do
+                            local matInterface = mesh:GetMaterial(i)
+                            if not Valid(matInterface) then break end
+                            local baseMat = matInterface:GetBaseMaterial()
+                            if Valid(baseMat) then
+                                pcall(function()
+                                    baseMat.bDisableDepthTest = false
+                                    baseMat.BlendMode = 0
+                                end)
+                            end
+                        end
 
-    for i, mid in pairs(markData.WowMIDs[meshKey]) do
-        if Valid(mid) then
-            local defC = {R=1, G=1, B=1, A=1}
-            pcall(function() mid:SetVectorParameterValue("颜色", defC) end)
-            pcall(function() mid:SetVectorParameterValue("Extra Light Color", defC) end)
-            pcall(function() mid:SetVectorParameterValue("Para_Color", defC) end)
-            pcall(function() mid:SetVectorParameterValue("Para_ColorTint", defC) end)
-            pcall(function() mid:SetVectorParameterValue("Para_Color_1", defC) end)
-            pcall(function() mid:SetVectorParameterValue("Tint", defC) end)
-            pcall(function() mid:SetVectorParameterValue("Color", defC) end)
-            pcall(function() mid:SetVectorParameterValue("BaseColor", defC) end)
-            pcall(function() mid:SetVectorParameterValue("BodyColor", defC) end)
-            pcall(function() mid:SetVectorParameterValue("MainColor", defC) end)
-            pcall(function() mid:SetVectorParameterValue("DiffuseColor", defC) end)
-            pcall(function() mid:SetVectorParameterValue("EmissiveColor", defC) end)
-            pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 1.0) end)
-            pcall(function() mid:SetScalarParameterValue("EmissionStrength", 1.0) end)
-            pcall(function() mid:SetScalarParameterValue("LightIntensity", 1.0) end)
-            pcall(function() mid:SetScalarParameterValue("GlowIntensity", 1.0) end)
-            pcall(function() mid:SetScalarParameterValue("Brightness", 1.0) end)
-            pcall(function() mid:SetScalarParameterValue("ColorIntensity", 1.0) end)
-            -- 🔥 reset depth test params
-            pcall(function() mid:SetScalarParameterValue("bDisableDepthTest", 0) end)
-            pcall(function() mid:SetScalarParameterValue("BlendMode", 0) end)
+                        for i, mid in pairs(markData.WowMIDs[meshKey]) do
+                            if Valid(mid) then
+                                local defC = {R=1, G=1, B=1, A=1}
+                                pcall(function() mid:SetVectorParameterValue("颜色", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Extra Light Color", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Para_Color", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Para_ColorTint", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Para_Color_1", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Tint", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Color", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("BaseColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("BodyColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("MainColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("DiffuseColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("EmissiveColor", defC) end)
+                                pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("EmissionStrength", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("LightIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("GlowIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("Brightness", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("ColorIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("bDisableDepthTest", 0) end)
+                                pcall(function() mid:SetScalarParameterValue("BlendMode", 0) end)
+                            end
+                        end
+                        markData.WowMIDs[meshKey] = nil
+                    end
+                end
+            end
+            markData.WowMIDs = nil
+            markData.ColorNewApplied = false
+            markData.LastColorNewHash = ""
+            markData.WowFallbackVerified = nil
         end
-    end
-    markData.WowMIDs[meshKey] = nil
+    end)
 end
     -- ========================================== 
     -- SKIN MOD LOOP - ULTIMATE FIX FOR 32-BIT
