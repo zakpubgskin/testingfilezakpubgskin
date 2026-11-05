@@ -4791,10 +4791,6 @@ _G.AimTouch = function()
 
     end)
 end
--- ==========================================
--- COLORBODYNEW — WOW/TDM WALL-PIERCE FIX
--- ==========================================
-
 local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
         if not _G.ConsoleNewWallReady then
@@ -4807,6 +4803,9 @@ local function ApplyColorBodyNew(enemy, markData)
                 KSL.ExecuteConsoleCommand(world, "r.Highlight.Enable 1")
                 KSL.ExecuteConsoleCommand(world, "r.CustomDepth.StencilEnable 1")
                 KSL.ExecuteConsoleCommand(world, "r.CustomDepthTemporalAAJitter 0")
+                -- WoW-mode renderer support (harmless on normal maps)
+                KSL.ExecuteConsoleCommand(world, "r.WOW.EnableDyeing 1")
+                KSL.ExecuteConsoleCommand(world, "r.WOW.CustomDepth 3")
                 _G.ConsoleNewWallReady = true
             end
         end
@@ -4822,7 +4821,114 @@ local function ApplyColorBodyNew(enemy, markData)
         local currentMeshCount = #meshes
         if currentMeshCount == 0 then return end
 
+        -- ================================================================
+        -- WoW MODE DETECTION (new — only used to pick the render path)
+        -- ================================================================
+        local isWowMode = false
+        pcall(function()
+            local GameState = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+            if GameState then
+                local modeId = tonumber(GameState.GameModeID) or 0
+                local modeType = GameState.GameModeType
+                if modeType == 13 or modeType == 14 or modeId == 20001 or modeId == 20002
+                   or tostring(GameState.GameModeID or ""):find("WOW")
+                   or tostring(GameState.GameModeID or ""):find("wow") then
+                    isWowMode = true
+                end
+            end
+            if not isWowMode and slua.isValid(enemy) then
+                local clsName = tostring(Game:GetPlainName(enemy.Object or enemy)) or ""
+                if clsName:find("WOW") or clsName:find("Wow") or clsName:find("wow") then
+                    isWowMode = true
+                end
+            end
+        end)
+
+        -- ================================================================
+        -- VISIBILITY CHECK — only needed for WoW MID fallback
+        -- (same line-trace approach as ApplyColorBodyV2)
+        -- ================================================================
+        local hidden = true
+        if isWowMode then
+            local curTime = os.clock()
+            if markData.LastVisCheckTime == nil or (curTime - markData.LastVisCheckTime) > 0.15 then
+                markData.LastVisCheckTime = curTime
+                local isHidden = true
+                pcall(function()
+                    local localPlayer = nil
+                    local GD = require("GameLua.GameCore.Data.GameplayData")
+                    if GD and GD.GetPlayerCharacter then
+                        localPlayer = GD.GetPlayerCharacter()
+                    end
+                    if not Valid(localPlayer) then return end
+
+                    local pcMgr = localPlayer:GetPlayerControllerSafety()
+                    if not Valid(pcMgr) then return end
+
+                    -- Enemy head position
+                    local headPos = nil
+                    if type(enemy.GetBonePos) == "function" then
+                        local fb = (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()) or {X=0,Y=0,Z=0}
+                        headPos = enemy:GetBonePos("head", fb)
+                    end
+                    if not headPos and type(enemy.GetSocketLocation) == "function" then
+                        headPos = enemy:GetSocketLocation("head")
+                    end
+                    if not headPos and type(enemy.K2_GetActorLocation) == "function" then
+                        headPos = enemy:K2_GetActorLocation()
+                        if headPos then headPos.Z = headPos.Z + 70 end
+                    end
+                    if not headPos then return end
+
+                    local GS = import("GameplayStatics")
+                    local camMgr = GS.GetPlayerCameraManager(pcMgr, 0)
+                    if not slua.isValid(camMgr) then return end
+                    local camLoc = camMgr:GetCameraLocation()
+                    if not camLoc then return end
+
+                    if not markData.HitResult then
+                        markData.HitResult = import("HitResult")()
+                    end
+                    if not markData.IgnoreActors or markData.IgnoreActorsEnemy ~= enemy then
+                        if not markData.CachedActorClass then
+                            markData.CachedActorClass = import("Actor")
+                        end
+                        markData.IgnoreActors = slua.Array(UEnums.EPropertyClass.Object, markData.CachedActorClass)
+                        markData.IgnoreActors:Add(localPlayer)
+                        markData.IgnoreActors:Add(enemy)
+                        markData.IgnoreActorsEnemy = enemy
+                    end
+
+                    local KSL = import("KismetSystemLibrary")
+                    local traceHit = false
+                    pcall(function()
+                        traceHit = KSL.LineTraceSingle(
+                            pcMgr, camLoc, headPos,
+                            UEnums.ETraceTypeQuery.TraceTypeQuery1,
+                            false, markData.IgnoreActors,
+                            UEnums.EDrawDebugTrace.None,
+                            markData.HitResult, true)
+                    end)
+
+                    if traceHit and markData.HitResult then
+                        local hitActor = markData.HitResult.Actor
+                        if slua.isValid(hitActor) and hitActor ~= enemy then
+                            isHidden = true   -- wall hit
+                        else
+                            isHidden = false
+                        end
+                    else
+                        isHidden = false
+                    end
+                end)
+                markData.CachedHiddenState = isHidden
+            end
+            hidden = markData.CachedHiddenState
+            if hidden == nil then hidden = true end
+        end
+
         local stateHash = (isBot and "BOT" or "PLAYER") .. "_" .. tostring(currentMeshCount)
+            .. "_" .. (isWowMode and ("WOW_" .. (hidden and "H" or "V")) or "NORM")
         if markData.LastColorNewHash == stateHash and markData.ColorNewApplied then
             if markData.WowFallbackVerified ~= false then return end
         end
@@ -4831,49 +4937,83 @@ local function ApplyColorBodyNew(enemy, markData)
         markData.ColorNewApplied = true
 
         local LC = import("LinearColor") or _G.FLinearColor
-        local c_vis  = LC and LC(0, 100, 0, 1)      or {R=0, G=100, B=0, A=1}
-        local c_occ  = LC and LC(100, 0, 0, 1)      or {R=100, G=0, B=0, A=1}
+
+        -- ================================================================
+        -- WoW colors: RED behind wall, YELLOW when visible
+        -- Normal maps keep the original green/red palette (untouched)
+        -- ================================================================
+        local c_vis, c_occ
+        if isWowMode then
+            -- WoW: YELLOW = visible, RED = hidden
+            c_vis = LC and LC(1.0, 1.0, 0.0, 1.0) or {R=1.0, G=1.0, B=0.0, A=1.0}   -- yellow
+            c_occ = LC and LC(1.0, 0.0, 0.0, 1.0) or {R=1.0, G=0.0, B=0.0, A=1.0}   -- red
+        else
+            -- Normal maps: original palette
+            c_vis  = LC and LC(0, 100, 0, 1)      or {R=0, G=100, B=0, A=1}
+            c_occ  = LC and LC(100, 0, 0, 1)      or {R=100, G=0, B=0, A=1}
+        end
         local c_bVis = LC and LC(49, 48, 0, 100)    or {R=49, G=48, B=0, A=100}
         local c_bOcc = LC and LC(9, 1.5, 45, 100)   or {R=9, G=1.5, B=45, A=100}
 
         local visColor = isBot and c_bVis or c_vis
         local occColor = isBot and c_bOcc or c_occ
 
+        -- For WoW MID fallback, pick single color based on visibility
+        local wowSingleColor = hidden and c_occ or c_vis
+
         local dyeingWorked = false
 
         for meshIndex, mesh in ipairs(meshes) do
             if Valid(mesh) then
-                pcall(function()
-                    if type(mesh.SetDrawDyeing) == "function" then
-                        mesh:SetDrawDyeing(true)
-                        mesh:SetDrawDyeingMode(1)
-                        mesh:SetVisibleDyeingColor(visColor)
-                        mesh:SetOccludedDyeingColor(occColor)
-                        mesh:SetDyeingColorFadeDistance(99999.0)
-                        mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
-                        mesh:SetDrawHighlight(true)
-                        mesh:OverrideHighlightColor(visColor)
-                        mesh:SetHighlightCanBeOccluded(false)
-                        mesh:SetDrawIdeaOutline(true)
-                        mesh:SetIdeaOutlineNew(true)
-                        pcall(function() mesh:SetIdeaOutlineOcclusionHighlight(true) end)
-                        mesh:OverrideIdeaOutlineColor(visColor)
-                        mesh:SetIdeaOutlineOcclusionColor(occColor)
-                        mesh:OverrideIdeaOutlineThickness(5.0)
-                        mesh:SetIdeaOverrideOutlineAndOcclusion(true)
-                        mesh:SetRenderCustomDepth(true)
-                        mesh:SetCustomDepthStencilValue(255)
-                        dyeingWorked = true
-                    end
-                end)
+                -- Skip dyeing-only path on WoW (it doesn't render there)
+                if not isWowMode then
+                    pcall(function()
+                        if type(mesh.SetDrawDyeing) == "function" then
+                            mesh:SetDrawDyeing(true)
+                            mesh:SetDrawDyeingMode(1)
+                            mesh:SetVisibleDyeingColor(visColor)
+                            mesh:SetOccludedDyeingColor(occColor)
+                            mesh:SetDyeingColorFadeDistance(99999.0)
+                            mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
+                            mesh:SetDrawHighlight(true)
+                            mesh:OverrideHighlightColor(visColor)
+                            mesh:SetHighlightCanBeOccluded(false)
+                            mesh:SetDrawIdeaOutline(true)
+                            mesh:SetIdeaOutlineNew(true)
+                            pcall(function() mesh:SetIdeaOutlineOcclusionHighlight(true) end)
+                            mesh:OverrideIdeaOutlineColor(visColor)
+                            mesh:SetIdeaOutlineOcclusionColor(occColor)
+                            mesh:OverrideIdeaOutlineThickness(5.0)
+                            mesh:SetIdeaOverrideOutlineAndOcclusion(true)
+                            mesh:SetRenderCustomDepth(true)
+                            mesh:SetCustomDepthStencilValue(255)
+                            dyeingWorked = true
+                        end
+                    end)
+                end
 
-                if not dyeingWorked then
+                -- Force custom depth in WoW (needed for outline)
+                if isWowMode then
                     pcall(function()
                         if type(mesh.SetRenderCustomDepth) == "function" then
                             mesh:SetRenderCustomDepth(true)
                         end
                         if type(mesh.SetCustomDepthStencilValue) == "function" then
                             mesh:SetCustomDepthStencilValue(255)
+                        end
+                    end)
+                end
+
+                -- MID fallback: runs on WoW always, on normal only if dyeing failed
+                if isWowMode or not dyeingWorked then
+                    pcall(function()
+                        if not isWowMode then
+                            if type(mesh.SetRenderCustomDepth) == "function" then
+                                mesh:SetRenderCustomDepth(true)
+                            end
+                            if type(mesh.SetCustomDepthStencilValue) == "function" then
+                                mesh:SetCustomDepthStencilValue(255)
+                            end
                         end
                     end)
 
@@ -4887,10 +5027,14 @@ local function ApplyColorBodyNew(enemy, markData)
                         local baseMat = matInterface:GetBaseMaterial()
                         if Valid(baseMat) then
                             local matName = tostring(baseMat)
-                            if string.find(matName, "Master_Mask", 1, true)
+                            local applyMat = isWowMode
+                                or string.find(matName, "Master_Mask", 1, true)
                                 or string.find(matName, "Master", 1, true)
-                                or string.find(matName, "Character", 1, true) then
+                                or string.find(matName, "Character", 1, true)
+                                or string.find(matName, "WOW", 1, true)
+                                or string.find(matName, "Wow", 1, true)
 
+                            if applyMat then
                                 local mid = markData.WowMIDs[meshKey][i]
                                 if not Valid(mid) then
                                     mid = mesh:CreateAndSetMaterialInstanceDynamic(i)
@@ -4916,18 +5060,20 @@ local function ApplyColorBodyNew(enemy, markData)
                                     pcall(function() mid:SetScalarParameterValue("Brightness", 3.0) end)
                                     pcall(function() mid:SetScalarParameterValue("ColorIntensity", 3.0) end)
 
-                                    pcall(function() mid:SetVectorParameterValue("颜色", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("Extra Light Color", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("Para_Color", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("Para_ColorTint", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("Para_Color_1", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("Tint", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("Color", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("BaseColor", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("BodyColor", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("MainColor", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("DiffuseColor", visColor) end)
-                                    pcall(function() mid:SetVectorParameterValue("EmissiveColor", visColor) end)
+                                    -- WoW uses single visibility-based color (yellow / red)
+                                    local useColor = isWowMode and wowSingleColor or visColor
+                                    pcall(function() mid:SetVectorParameterValue("颜色", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Extra Light Color", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Para_Color", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Para_ColorTint", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Para_Color_1", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Tint", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("Color", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("BaseColor", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("BodyColor", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("MainColor", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("DiffuseColor", useColor) end)
+                                    pcall(function() mid:SetVectorParameterValue("EmissiveColor", useColor) end)
                                 end
 
                                 pcall(function()
@@ -4941,7 +5087,7 @@ local function ApplyColorBodyNew(enemy, markData)
             end
         end
 
-        markData.WowFallbackVerified = dyeingWorked
+        markData.WowFallbackVerified = isWowMode and true or dyeingWorked
     end)
 end
 
