@@ -5179,6 +5179,15 @@ end
 -- ========================================== 
 local function MainLoop() 
     if isExpired then return end
+
+    -- License gate — BUT cached, no per-frame re-check
+    _G.__ZAK_LicCheckAt = _G.__ZAK_LicCheckAt or 0
+    local nowCheck = os.clock()
+    if nowCheck - _G.__ZAK_LicCheckAt > 2.0 then
+        _G.__ZAK_LicCheckAt = nowCheck
+        _G.__ZAK_LicActive = BRLicenseActive()
+    end
+    if not _G.__ZAK_LicActive then return end
     -- BRLicenseActive() gate removed (session check already done at load)
 
     if _G.GTLMODState.CustomTextData == nil then 
@@ -5694,7 +5703,34 @@ local function MainLoop()
         pcall(function() if type(localPlayer.K2_GetActorLocation) == "function" then mLoc = localPlayer:K2_GetActorLocation() end end)
 
         for _, enemy in pairs(allCharacters) do
-            if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID then
+            -- Robust teammate check for TDM/WoW
+local function IsTeammate(pawn, me)
+    if not Valid(pawn) or not Valid(me) then return true end
+    if pawn == me then return true end
+
+    -- Direct TeamID
+    local myTeam = me.TeamID or (type(me.GetTeamID) == "function" and me:GetTeamID()) or 0
+    local theirTeam = pawn.TeamID or (type(pawn.GetTeamID) == "function" and pawn:GetTeamID()) or 0
+    if myTeam ~= 0 and theirTeam ~= 0 and myTeam == theirTeam then return true end
+
+    -- PlayerState-based
+    local myPS = me.PlayerState
+    local theirPS = pawn.PlayerState
+    if Valid(myPS) and Valid(theirPS) then
+        local myT = myPS.TeamID or (type(myPS.GetTeamID) == "function" and myPS:GetTeamID()) or 0
+        local theirT = theirPS.TeamID or (type(theirPS.GetTeamID) == "function" and theirPS:GetTeamID()) or 0
+        if myT ~= 0 and theirT ~= 0 and myT == theirT then return true end
+    end
+
+    -- WoW fallback — bIsTeammate flag
+    if pawn.bIsTeammate == true or pawn.bIsMyTeammate == true then return true end
+    if Valid(theirPS) and (theirPS.bIsTeammate == true or theirPS.bIsMyTeammate == true) then return true end
+
+    return false
+end
+
+-- Use it:
+if Valid(enemy) and enemy ~= localPlayer and not IsTeammate(enemy, localPlayer) then
                 local bIsReallyDead = false
                 pcall(function()
                     if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
@@ -6843,8 +6879,48 @@ local showFrameUI = _G.GTLMODConfig.EspVipPro or _G.GTLMODConfig.EspVip
                     end
 
                 else
-                    if not markData.IsCleanedUp then
-                        SafeRemoveMark(markData.radarMark)
+    if not markData.IsCleanedUp then
+        -- WoW MID cleanup BEFORE marks
+        if markData.WowMIDs then
+            pcall(function()
+                local eObj = markData.enemy
+                if Valid(eObj) then
+                    local meshes = GetAllSkeletalMeshes(eObj, markData)
+                    for meshIdx, mesh in ipairs(meshes) do
+                        if Valid(mesh) then
+                            pcall(function()
+                                if type(mesh.SetDrawDyeing) == "function" then
+                                    mesh:SetDrawDyeing(false)
+                                    mesh:SetDrawHighlight(false)
+                                    mesh:SetDrawIdeaOutline(false)
+                                    mesh:SetRenderCustomDepth(false)
+                                end
+                                if type(mesh.SetCustomDepthStencilValue) == "function" then
+                                    mesh:SetCustomDepthStencilValue(0)
+                                end
+                            end)
+                        end
+                    end
+                end
+            end)
+            markData.WowMIDs = nil
+            markData.ColorNewApplied = false
+            markData.LastColorNewHash = ""
+            markData.WowFallbackVerified = nil
+            markData.LastVisCheckTime = nil
+            markData.CachedHiddenState = nil
+        end
+
+        SafeRemoveMark(markData.radarMark)
+        markData.radarMark = nil
+        SafeRemoveMark(markData.hpMark)
+        markData.hpMark = nil
+        SafeRemoveMark(markData.hpMark8)
+        markData.hpMark8 = nil
+        SafeRemoveMark(markData.distMark)
+        markData.distMark = nil
+
+        -- ... baaki original cleanup
                         markData.radarMark = nil
                         SafeRemoveMark(markData.hpMark)
                         markData.hpMark = nil
@@ -6925,16 +7001,12 @@ end
 -- ========================================== 
 local aimbotToken = 0
 local function FastAimbotTick()
-    if isExpired then 
-        return 
-    end
-
-    if aimbotToken ~= _G.GTLMODState.AimbotLoopToken then 
-        return 
-    end
+    if isExpired then return end
+    if aimbotToken ~= _G.GTLMODState.AimbotLoopToken then return end
 
     pcall(function()
-        if _G.GTLMODConfig.AimTouchEnable then
+        -- License gate here too (aimbot ko bhi key chahiye)
+        if _G.__ZAK_LicActive and _G.GTLMODConfig.AimTouchEnable then
             _G.AimTouch()
         end
     end)
