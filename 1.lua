@@ -5179,7 +5179,7 @@ end
 -- ========================================== 
 local function MainLoop() 
     if isExpired then return end
-    if not BRLicenseActive() then return end
+    -- BRLicenseActive() gate removed (session check already done at load)
 
     if _G.GTLMODState.CustomTextData == nil then 
         _G.GTLMODState.CustomTextData = {OuterSpeed = 10, InnerSpeed = 10, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120, AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250, AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30, AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchSniperPrio = 1, AimTouchSniperBone = 1, AimTouchSniperCond = 2, AimTouchSniperSpeed = 30, AimTouchSniperFOV = 20, AimTouchSniperDist = 400, SkinSuit = 1, SkinBag = 1, SkinHelmet = 1, SkinM416 = 1, SkinAKM = 1, SkinSCAR = 1, SkinM762 = 1, SkinAUG = 1, SkinUMP = 6, SkinUZI = 1, SkinGroza = 1, SkinKar98K = 1, SkinAWM = 2, SkinAMR = 1, SkinS12K = 1, SkinDBS = 1, SkinDacia = 1, SkinUAZ = 1, SkinCoupe = 1, SkinBuggy = 1, SkinMirado = 1}
@@ -5187,9 +5187,12 @@ local function MainLoop()
 
     local okData, GameplayData = pcall(require, "GameLua.GameCore.Data.GameplayData") 
     if not okData or not GameplayData then return end 
-    local pc = GameplayData.GetPlayerController() 
-    local localPlayer = nil
-    if Valid(pc) then localPlayer = pc:GetPlayerCharacterSafety() end 
+        if not Valid(localPlayer) then
+        pcall(function()
+            local lp = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+            if Valid(lp) then localPlayer = lp end
+        end)
+    end
 
     if not Valid(localPlayer) then 
         if _G.GTLMODState.TrackedMarks then
@@ -6906,11 +6909,14 @@ local function FastTick()
         return 
     end
 
-    if myToken ~= _G.GTLMODState.LoopToken then return end
-    pcall(MainLoop) 
+    -- Always re-arm the timer (same pattern as FastAimbotTick)
+    local isCurrent = (myToken == _G.GTLMODState.LoopToken)
+    if isCurrent then
+        pcall(MainLoop) 
+    end
     local okTicker, ticker = pcall(require, "common.time_ticker") 
     if okTicker and ticker and ticker.AddTimerOnce then 
-        ticker.AddTimerOnce(0.4, FastTick) 
+        ticker.AddTimerOnce(0.033, FastTick)   -- was 0.4, now ~30 FPS
     end 
 end
 
