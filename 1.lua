@@ -4862,7 +4862,7 @@ local function MainLoop()
             end
         end)
     end
-         local function ApplyColorBodyNew(enemy, markData)
+        local function ApplyColorBodyNew(enemy, markData)
     pcall(function()
         -- Console commands (WOW-safe) — sirf ek baar
         if not _G.ConsoleNewWallReady then
@@ -5013,7 +5013,65 @@ local function MainLoop()
         markData.WowFallbackVerified = dyeingWorked
     end)
 end
+local function UndoColorBodyNew(enemy, markData)
+    pcall(function()
+        if markData.ColorNewApplied then
+            local meshes = GetAllSkeletalMeshes(enemy, markData)
+            local weapon = nil
+            pcall(function() weapon = enemy:GetCurrentWeapon() end)
+            if slua.isValid(weapon) and slua.isValid(weapon.Mesh) then
+                table.insert(meshes, weapon.Mesh)
+            end
 
+            for meshIndex, mesh in ipairs(meshes) do
+                if Valid(mesh) then
+                    -- Disable dyeing path
+                    pcall(function()
+                        if type(mesh.SetDrawDyeing) == "function" then
+                            mesh:SetDrawDyeing(false)
+                            mesh:SetDrawHighlight(false)
+                            mesh:SetDrawIdeaOutline(false)
+                            mesh:SetRenderCustomDepth(false)
+                        end
+                    end)
+
+                    -- Restore WOW/TDM MID colors
+                    local meshKey = "WowMesh_" .. tostring(meshIndex)
+                    if markData.WowMIDs and markData.WowMIDs[meshKey] then
+                        for i, mid in pairs(markData.WowMIDs[meshKey]) do
+                            if Valid(mid) then
+                                local defC = {R=1, G=1, B=1, A=1}
+                                pcall(function() mid:SetVectorParameterValue("颜色", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Extra Light Color", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Para_Color", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Para_ColorTint", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Para_Color_1", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Tint", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("Color", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("BaseColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("BodyColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("MainColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("DiffuseColor", defC) end)
+                                pcall(function() mid:SetVectorParameterValue("EmissiveColor", defC) end)
+                                pcall(function() mid:SetScalarParameterValue("EmissiveIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("EmissionStrength", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("LightIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("GlowIntensity", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("Brightness", 1.0) end)
+                                pcall(function() mid:SetScalarParameterValue("ColorIntensity", 1.0) end)
+                            end
+                        end
+                        markData.WowMIDs[meshKey] = nil
+                    end
+                end
+            end
+            markData.WowMIDs = nil
+            markData.ColorNewApplied = false
+            markData.LastColorNewHash = ""
+            markData.WowFallbackVerified = nil
+        end
+    end)
+end
     -- ========================================== 
     -- SKIN MOD LOOP - ULTIMATE FIX FOR 32-BIT
     -- (Suit, Weapon, Bag, Helmet, Vehicle, Pet - ALL SKINS WORK)
