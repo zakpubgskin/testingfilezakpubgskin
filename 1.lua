@@ -5180,30 +5180,32 @@ end
 local function MainLoop() 
     if isExpired then return end
 
-    -- License gate — BUT cached, no per-frame re-check
+    -- License gate — cached, checks every 2s
     _G.__ZAK_LicCheckAt = _G.__ZAK_LicCheckAt or 0
     local nowCheck = os.clock()
     if nowCheck - _G.__ZAK_LicCheckAt > 2.0 then
         _G.__ZAK_LicCheckAt = nowCheck
         _G.__ZAK_LicActive = BRLicenseActive()
     end
-    if not _G.__ZAK_LicActive then return end
-    -- BRLicenseActive() gate removed (session check already done at load)
+    if _G.__ZAK_LicActive ~= true then return end
 
-    if _G.GTLMODState.CustomTextData == nil then 
+    if _G.GTLMODState.CustomTextData == nil then
         _G.GTLMODState.CustomTextData = {OuterSpeed = 10, InnerSpeed = 10, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120, AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250, AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30, AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchSniperPrio = 1, AimTouchSniperBone = 1, AimTouchSniperCond = 2, AimTouchSniperSpeed = 30, AimTouchSniperFOV = 20, AimTouchSniperDist = 400, SkinSuit = 1, SkinBag = 1, SkinHelmet = 1, SkinM416 = 1, SkinAKM = 1, SkinSCAR = 1, SkinM762 = 1, SkinAUG = 1, SkinUMP = 6, SkinUZI = 1, SkinGroza = 1, SkinKar98K = 1, SkinAWM = 2, SkinAMR = 1, SkinS12K = 1, SkinDBS = 1, SkinDacia = 1, SkinUAZ = 1, SkinCoupe = 1, SkinBuggy = 1, SkinMirado = 1}
     end
 
     local okData, GameplayData = pcall(require, "GameLua.GameCore.Data.GameplayData") 
-    if not okData or not GameplayData then return end 
-        if not Valid(localPlayer) then
-        pcall(function()
-            local lp = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
-            if Valid(lp) then localPlayer = lp end
-        end)
-    end
+if not okData or not GameplayData then return end 
+local pc = GameplayData.GetPlayerController() 
+local localPlayer = nil
+if Valid(pc) then localPlayer = pc:GetPlayerCharacterSafety() end 
+if not Valid(localPlayer) then
+    pcall(function()
+        local lp = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+        if Valid(lp) then localPlayer = lp end
+    end)
+end
 
-    if not Valid(localPlayer) then 
+if not Valid(localPlayer) then 
         if _G.GTLMODState.TrackedMarks then
             for markId, _ in pairs(_G.GTLMODState.TrackedMarks) do
                 SafeRemoveMark(markId)
@@ -5699,38 +5701,31 @@ local function MainLoop()
             return nil
         end
 
-        local mLoc = nil
+
+                        local mLoc = nil
         pcall(function() if type(localPlayer.K2_GetActorLocation) == "function" then mLoc = localPlayer:K2_GetActorLocation() end end)
 
-        for _, enemy in pairs(allCharacters) do
-            -- Robust teammate check for TDM/WoW
-local function IsTeammate(pawn, me)
-    if not Valid(pawn) or not Valid(me) then return true end
-    if pawn == me then return true end
+        -- Teammate check helper — defined ONCE, outside loop
+        local function IsTeammate(pawn, me)
+            if not Valid(pawn) or not Valid(me) then return true end
+            if pawn == me then return true end
+            local myTeam = me.TeamID or (type(me.GetTeamID) == "function" and me:GetTeamID()) or 0
+            local theirTeam = pawn.TeamID or (type(pawn.GetTeamID) == "function" and pawn:GetTeamID()) or 0
+            if myTeam ~= 0 and theirTeam ~= 0 and myTeam == theirTeam then return true end
+            local myPS = me.PlayerState
+            local theirPS = pawn.PlayerState
+            if Valid(myPS) and Valid(theirPS) then
+                local myT = myPS.TeamID or (type(myPS.GetTeamID) == "function" and myPS:GetTeamID()) or 0
+                local theirT = theirPS.TeamID or (type(theirPS.GetTeamID) == "function" and theirPS:GetTeamID()) or 0
+                if myT ~= 0 and theirT ~= 0 and myT == theirT then return true end
+            end
+            if pawn.bIsTeammate == true or pawn.bIsMyTeammate == true then return true end
+            if Valid(theirPS) and (theirPS.bIsTeammate == true or theirPS.bIsMyTeammate == true) then return true end
+            return false
+        end
 
-    -- Direct TeamID
-    local myTeam = me.TeamID or (type(me.GetTeamID) == "function" and me:GetTeamID()) or 0
-    local theirTeam = pawn.TeamID or (type(pawn.GetTeamID) == "function" and pawn:GetTeamID()) or 0
-    if myTeam ~= 0 and theirTeam ~= 0 and myTeam == theirTeam then return true end
-
-    -- PlayerState-based
-    local myPS = me.PlayerState
-    local theirPS = pawn.PlayerState
-    if Valid(myPS) and Valid(theirPS) then
-        local myT = myPS.TeamID or (type(myPS.GetTeamID) == "function" and myPS:GetTeamID()) or 0
-        local theirT = theirPS.TeamID or (type(theirPS.GetTeamID) == "function" and theirPS:GetTeamID()) or 0
-        if myT ~= 0 and theirT ~= 0 and myT == theirT then return true end
-    end
-
-    -- WoW fallback — bIsTeammate flag
-    if pawn.bIsTeammate == true or pawn.bIsMyTeammate == true then return true end
-    if Valid(theirPS) and (theirPS.bIsTeammate == true or theirPS.bIsMyTeammate == true) then return true end
-
-    return false
-end
-
--- Use it:
-if Valid(enemy) and enemy ~= localPlayer and not IsTeammate(enemy, localPlayer) then
+                        for _, enemy in pairs(allCharacters) do
+            if Valid(enemy) and enemy ~= localPlayer and not IsTeammate(enemy, localPlayer) then
                 local bIsReallyDead = false
                 pcall(function()
                     if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
