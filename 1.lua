@@ -5753,7 +5753,17 @@ do
                 _G.LexusState.IsAutoFiring = false
             end
 
-            if isShotgun and currentAmmo <= 0 then return end
+                        if isShotgun and currentAmmo <= 0 then return end
+
+
+            -- Shotgun throttle: shotgun aim only needs ~20 FPS, not 60. This kills the lag.
+            if isShotgun and not isADS then
+                local nowS = (_G.LunarFeatures and _G.LunarFeatures.Now and _G.LunarFeatures.Now()) or os.clock()
+                _G.LexusState = _G.LexusState or {}
+                local lastS = _G.LexusState.SGLOCK or 0
+                if nowS - lastS < 0.045 then return end
+                _G.LexusState.SGLOCK = nowS
+            end
 
             local cond, prioMode, boneIdx, speedVal, fovVal, maxDistMeters = 2, 1, 1, 50, 30, 50
             local useVisCheck, igKnock, igBot, predVal = false, false, false, 0
@@ -6069,8 +6079,12 @@ do
             end
         end)
                 local okTicker, ticker = pcall(require, "common.time_ticker")
+        local F2 = _G.LunarFeatures
+        local sgOnly = _G.LexusConfig.AimTouchSG
+                   and not (_G.LexusConfig.AimTouchScopeSniper or _G.LexusConfig.AimTouchScopeAll)
+        local delay = sgOnly and 0.033 or 0.016
         if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.016, FastAimbotTickV2)
+            ticker.AddTimerOnce(delay, FastAimbotTickV2)
         end
     end
 
@@ -6080,6 +6094,7 @@ do
         ticker.AddTimerOnce(0.5, FastAimbotTickV2)
     end
 end  -- ✅ AIMBOT V2 do-block END (was MISSING)
+end
 -- ============================================================================
 -- END AIMBOT V2
 -- ============================================================================
