@@ -1740,7 +1740,135 @@ do
     local V2={espAll(2),
         espSwitch(2,"Name","ESP NAME"),espSwitch(2,"Line","ESP LINE"),espSwitch(2,"Box","ESP BOX"),
         espSwitch(2,"Health","ESP HEALTH"),espSwitch(2,"Distance","ESP DISTANCE"),espSwitch(2,"Skeleton","ESP SKELETON"),espSwitch(2,"Counter","ESP COUNTER")}
-    local Other={
+    -- New section: dedicated aimbot tab, mirrors the reference layout.
+local LATab = {
+    { Key="LunarAIM_Ex", UI=AliasMap.Switcher, Text="LUNAR AIMBOT [NEW]",
+  ExpandIndex=0,
+  GetFunc=function() return _G.LunarAimTouch and _G.LunarAimTouch.Enabled end,
+  SetFunc=function(c,v) if _G.LunarAimTouch then _G.LunarAimTouch.SetEnabled(v) end; return true end },
+
+    { Key="LunarAIM_IgKnock", UI=AliasMap.Switcher, Text="   Ignore Knocked",
+      ExpandHandle="LunarAIM_Ex",
+      GetFunc=function() return _G.LunarAimTouch.Toggles.IgKnock end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("IgKnock", v) end },
+    { Key="LunarAIM_VisCheck", UI=AliasMap.Switcher, Text="   Visibility Check",
+      ExpandHandle="LunarAIM_Ex",
+      GetFunc=function() return _G.LunarAimTouch.Toggles.VisCheck end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("VisCheck", v) end },
+
+    { Key="LunarAIM_Hip_Ex", UI=AliasMap.Switcher, Text="   AIMBOT [ALL WEAPON]",
+      ExpandHandle="LunarAIM_Ex", ExpandIndex=0,
+      GetFunc=function() return _G.LunarAimTouch.Toggles.Hipfire end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("Hipfire", v) end },
+    { Key="LunarAIM_Hip_Bone", UI=AliasMap.Slider, Text="      Bone (1-4)",
+      ExpandHandle="LunarAIM_Hip_Ex", MinValue=1, MaxValue=4, min=1, max=4, Min=1, Max=4,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.HipBone end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("HipBone", v) end },
+    { Key="LunarAIM_Hip_Speed", UI=AliasMap.Slider, Text="      Speed (1-100)",
+      ExpandHandle="LunarAIM_Hip_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.HipSpeed end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("HipSpeed", v) end },
+    { Key="LunarAIM_Hip_FOV", UI=AliasMap.Slider, Text="      FOV (1-100)",
+      ExpandHandle="LunarAIM_Hip_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.HipFOV end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("HipFOV", v) end },
+    { Key="LunarAIM_Hip_Dist", UI=AliasMap.Slider, Text="      Distance (1-100)",
+      ExpandHandle="LunarAIM_Hip_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return math.floor(_G.LunarAimTouch.CustomTextData.HipDist / 5) end,
+      SetFunc=function(c,v) _G.LunarAimTouch.CustomTextData.HipDist = v * 5; return _G.LunarAimTouch.SetNum("HipDist", v*5) end },
+
+    { Key="LunarAIM_Scope_Ex", UI=AliasMap.Switcher, Text="   SCOPE AIMBOT [ALL WEAPON]",
+      ExpandHandle="LunarAIM_Ex", ExpandIndex=0,
+      GetFunc=function() return _G.LunarAimTouch.Toggles.ScopeAll end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("ScopeAll", v) end },
+    { Key="LunarAIM_Scope_Bone", UI=AliasMap.Slider, Text="      Bone (1-4)",
+      ExpandHandle="LunarAIM_Scope_Ex", MinValue=1, MaxValue=4, min=1, max=4, Min=1, Max=4,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.ScopeBone end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("ScopeBone", v) end },
+    { Key="LunarAIM_Scope_Speed", UI=AliasMap.Slider, Text="      Speed (1-100)",
+      ExpandHandle="LunarAIM_Scope_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.ScopeSpeed end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("ScopeSpeed", v) end },
+    { Key="LunarAIM_Scope_FOV", UI=AliasMap.Slider, Text="      FOV (1-100)",
+      ExpandHandle="LunarAIM_Scope_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.ScopeFOV end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("ScopeFOV", v) end },
+    { Key="LunarAIM_Scope_Dist", UI=AliasMap.Slider, Text="      Distance (1-100)",
+      ExpandHandle="LunarAIM_Scope_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return math.floor(_G.LunarAimTouch.CustomTextData.ScopeDist / 5) end,
+      SetFunc=function(c,v) _G.LunarAimTouch.CustomTextData.ScopeDist = v * 5; return _G.LunarAimTouch.SetNum("ScopeDist", v*5) end },
+    { Key="LunarAIM_Scope_Pred", UI=AliasMap.Slider, Text="      Prediction (0-100)",
+      ExpandHandle="LunarAIM_Scope_Ex", MinValue=0, MaxValue=100, min=0, max=100, Min=0, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.ScopePred end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("ScopePred", v) end },
+    { Key="LunarAIM_Scope_Recoil", UI=AliasMap.Slider, Text="      Recoil Comp (0-50)",
+      ExpandHandle="LunarAIM_Scope_Ex", MinValue=0, MaxValue=50, min=0, max=50, Min=0, Max=50,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.ScopeRecoil end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("ScopeRecoil", v) end },
+
+    { Key="LunarAIM_SG_Ex", UI=AliasMap.Switcher, Text="   SHOTGUN AIMBOT",
+      ExpandHandle="LunarAIM_Ex", ExpandIndex=0,
+      GetFunc=function() return _G.LunarAimTouch.Toggles.SG end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("SG", v) end },
+    { Key="LunarAIM_SG_Auto", UI=AliasMap.Switcher, Text="      Auto Fire",
+      ExpandHandle="LunarAIM_SG_Ex",
+      GetFunc=function() return _G.LunarAimTouch.Toggles.SGAutoFire end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("SGAutoFire", v) end },
+    { Key="LunarAIM_SG_IgKnock", UI=AliasMap.Switcher, Text="      Ignore Knocked",
+      ExpandHandle="LunarAIM_SG_Ex",
+      GetFunc=function() return _G.LunarAimTouch.Toggles.SGIgKnock end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("SGIgKnock", v) end },
+    { Key="LunarAIM_SG_Vis", UI=AliasMap.Switcher, Text="      Visibility Check",
+      ExpandHandle="LunarAIM_SG_Ex",
+      GetFunc=function() return _G.LunarAimTouch.Toggles.SGVisCheck end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("SGVisCheck", v) end },
+    { Key="LunarAIM_SG_Cond", UI=AliasMap.Slider, Text="      Condition (1-2)",
+      ExpandHandle="LunarAIM_SG_Ex", MinValue=1, MaxValue=2, min=1, max=2, Min=1, Max=2,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SGCond end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SGCond", v) end },
+    { Key="LunarAIM_SG_Speed", UI=AliasMap.Slider, Text="      Speed (1-100)",
+      ExpandHandle="LunarAIM_SG_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SGSpeed end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SGSpeed", v) end },
+    { Key="LunarAIM_SG_FOV", UI=AliasMap.Slider, Text="      FOV (1-100)",
+      ExpandHandle="LunarAIM_SG_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SGFOV end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SGFOV", v) end },
+    { Key="LunarAIM_SG_Dist", UI=AliasMap.Slider, Text="      Distance (1-100)",
+      ExpandHandle="LunarAIM_SG_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SGDist end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SGDist", v) end },
+
+    { Key="LunarAIM_Sniper_Ex", UI=AliasMap.Switcher, Text="   SNIPER AIMBOT",
+      ExpandHandle="LunarAIM_Ex", ExpandIndex=0,
+      GetFunc=function() return _G.LunarAimTouch.Toggles.Sniper end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("Sniper", v) end },
+    { Key="LunarAIM_Sniper_IgKnock", UI=AliasMap.Switcher, Text="      Ignore Knocked",
+      ExpandHandle="LunarAIM_Sniper_Ex",
+      GetFunc=function() return _G.LunarAimTouch.Toggles.SniperIgKnock end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.Set("SniperIgKnock", v) end },
+    { Key="LunarAIM_Sniper_Cond", UI=AliasMap.Slider, Text="      Condition (1-2)",
+      ExpandHandle="LunarAIM_Sniper_Ex", MinValue=1, MaxValue=2, min=1, max=2, Min=1, Max=2,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SniperCond end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SniperCond", v) end },
+    { Key="LunarAIM_Sniper_Speed", UI=AliasMap.Slider, Text="      Speed (1-100)",
+      ExpandHandle="LunarAIM_Sniper_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SniperSpeed end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SniperSpeed", v) end },
+    { Key="LunarAIM_Sniper_FOV", UI=AliasMap.Slider, Text="      FOV (1-100)",
+      ExpandHandle="LunarAIM_Sniper_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SniperFOV end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SniperFOV", v) end },
+    { Key="LunarAIM_Sniper_Dist", UI=AliasMap.Slider, Text="      Distance (1-100)",
+      ExpandHandle="LunarAIM_Sniper_Ex", MinValue=1, MaxValue=100, min=1, max=100, Min=1, Max=100,
+      GetFunc=function() return math.floor(_G.LunarAimTouch.CustomTextData.SniperDist / 5) end,
+      SetFunc=function(c,v) _G.LunarAimTouch.CustomTextData.SniperDist = v * 5; return _G.LunarAimTouch.SetNum("SniperDist", v*5) end },
+    { Key="LunarAIM_Sniper_Pred", UI=AliasMap.Slider, Text="      Prediction (0-100)",
+      ExpandHandle="LunarAIM_Sniper_Ex", MinValue=0, MaxValue=100, min=0, max=100, Min=0, Max=100,
+      GetFunc=function() return _G.LunarAimTouch.CustomTextData.SniperPred end,
+      SetFunc=function(c,v) return _G.LunarAimTouch.SetNum("SniperPred", v) end },
+}
+        local Other={
         {Key="LunarWall",UI=AliasMap.Switcher,Text="Wall Hack",ExpandIndex=0,EventType=F.ESPSettingsEventType,EventID=3,GetFunc=function() return featureState().Settings.WallEnabled end,
             SetFunc=function(c,v) featureState().SetWall(value(c,v));return true end},
         {Key="LunarIpad",UI=AliasMap.Switcher,Text="iPad View",ExpandIndex=0,GetFunc=function() return _G.LexusConfig.IpadView end,
@@ -1780,14 +1908,11 @@ do
     Other[#Other+1]={Key="LunarMortarAim",UI=AliasMap.Switcher,Text="Mortar aim",
         GetFunc=function() return featureState().Settings.MortarEnabled end,
         SetFunc=function(c,v) featureState().SetMortar(value(c,v));return true end}
-        Other[#Other+1]={Key="LunarShotgunAimbot",UI=AliasMap.Switcher,
-    Text="Shotgun Aimbot (Auto)",
-    EventType=F.AimSettingsEventType,EventID=F.AimSettingsEventID,
-    GetFunc=function() 
-        return type(_G.XthrlenConfig)=="table" 
-           and _G.XthrlenConfig.AimTouchSG==true 
-    end,
-    SetFunc=function(c,v) return featureState().ApplyShotgunPreset(value(c,v)) end}
+            Other[#Other+1]={Key="LunarShotgunAimbot",UI=AliasMap.Switcher,
+        Text="Shotgun Aimbot (Auto)",
+        EventType=F.AimSettingsEventType,EventID=F.AimSettingsEventID,
+        GetFunc=function() return _G.XthrlenConfig.AimTouchSG == true end,
+        SetFunc=function(c,v) return featureState().ApplyShotgunPreset(value(c,v)) end}
 
     local names={"Pink","White","Cyan","Green","Yellow","Saffron","Red"}
     for i,entry in ipairs({{"WallVisible","Visible color"},{"WallOccluded","Behind-wall color"}}) do
@@ -1799,10 +1924,11 @@ do
             SetFunc=function(c,v) return featureState().SetWallColor(key,value(c,v)) end})
     end
     local page={Key="HackMenu",Text="Hack menu",UIKey="Setting_Page_Privacy",Category={
-        {Key="Lunar_ESP_V1",Text="ESP V1",Stack=V1},
-        {Key="Lunar_ESP_V2",Text="ESP V2",Stack=V2},
-        {Key="Lunar_Other",Text="Other Features",Stack=Other}
-    }}
+    {Key="Lunar_ESP_V1",Text="ESP V1",Stack=V1},
+    {Key="Lunar_ESP_V2",Text="ESP V2",Stack=V2},
+    {Key="Lunar_Other",Text="Other Features",Stack=Other},
+    { Key="Lunar_AIM_NEW", Text="Aimbot [New]", Stack=LATab },
+}}
 
         return page
     end
@@ -4766,17 +4892,10 @@ do
                 pcall(function() file:close() end)
                 if readOK and type(payload)=="string" then
                     F.SettingsReadPath=path
-                    for _,key in ipairs({"AimEnabled","WallEnabled","IpadEnabled","Aim2Enabled","MortarEnabled","AimTouchSG"}) do
+                    for _,key in ipairs({"AimEnabled","WallEnabled","IpadEnabled","Aim2Enabled","MortarEnabled"}) do
                         local val=payload:match("%f[%w_]"..key.."%s*=%s*(%a+)")
                         if val=="true" or val=="false" then
-                            if key=="IpadEnabled" then 
-    _G.LexusConfig.IpadView=val=="true" 
-elseif key=="AimTouchSG" then
-    _G.XthrlenConfig.AimTouchSG = val=="true"
-    settings.AimTouchSG = val=="true"
-else 
-    settings[key]=val=="true" 
-end
+                            if key=="IpadEnabled" then _G.LexusConfig.IpadView=val=="true" else settings[key]=val=="true" end
                         end
                     end
                     for _,key in ipairs({"IpadFOV","AimSpeed","AimTarget"}) do
@@ -4816,9 +4935,7 @@ end
     F.Save=function(force)
         if not F.Dirty or not io or not io.open then return end
         local lines={"return {", "  IpadEnabled = "..tostring(_G.LexusConfig.IpadView==true)..","}
-        for _,key in ipairs({"AimEnabled","WallEnabled","Aim2Enabled","MortarEnabled","AimTouchSG","IpadFOV","AimSpeed","AimTarget","WallVisible","WallOccluded"}) do 
-    lines[#lines+1]="  "..key.." = "..tostring(settings[key]).."," 
-end
+        for _,key in ipairs({"AimEnabled","WallEnabled","Aim2Enabled","MortarEnabled","IpadFOV","AimSpeed","AimTarget","WallVisible","WallOccluded"}) do lines[#lines+1]="  "..key.." = "..tostring(settings[key]).."," end
         for _,key in ipairs({"Name","Line","Health","Distance","EnemyCounter"}) do lines[#lines+1]="  V1_"..key.." = "..tostring(_G.g_Botmater_ESPOptions[key]==true).."," end
         for _,key in ipairs({"Name","Line","Box","Health","Distance","Skeleton","Counter"}) do lines[#lines+1]="  V2_"..key.." = "..tostring(_G.g_vipserver_ESPOptions[key]==true).."," end
         lines[#lines+1]="}"
@@ -5141,6 +5258,83 @@ _G.XthrlenState.CustomTextData.AimTouchScopePred   = 0
 
 _G.XthrlenState.offPitch = _G.XthrlenState.offPitch or 0
 _G.XthrlenState.offYaw   = _G.XthrlenState.offYaw   or 0
+-- ============================================================================
+-- NEW SECTION: LunarAimTouch — standalone aimbot with its own menu tab.
+-- Yields to F.Settings.AimEnabled / Aim2Enabled / MortarEnabled so only one
+-- writer ever touches pc:SetControlRotation per frame (no jitter).
+-- ============================================================================
+_G.LunarAimTouch = _G.LunarAimTouch or {}
+
+local LAT = _G.LunarAimTouch
+LAT.Enabled = LAT.Enabled == true
+
+LAT.CustomTextData = LAT.CustomTextData or {
+    HipBone = 1, HipSpeed = 50, HipFOV = 30, HipDist = 250,
+    ScopeBone = 2, ScopeSpeed = 40, ScopeFOV = 20, ScopeDist = 300,
+    ScopePred = 0, ScopeRecoil = 0,
+    SGBone = 2, SGCond = 1, SGSpeed = 80, SGFOV = 40, SGDist = 30,
+    SniperBone = 1, SniperCond = 2, SniperSpeed = 30, SniperFOV = 20,
+    SniperDist = 400, SniperPred = 0,
+}
+
+LAT.Toggles = LAT.Toggles or {
+    IgKnock = true, IgBot = false, VisCheck = true,
+    Hipfire = true, ScopeAll = true,
+    SG = false, SGAutoFire = false, SGVisCheck = true, SGIgKnock = true,
+    Sniper = false, SniperIgKnock = true,
+}
+
+local function LAT_Config() return _G.LunarFeatures and _G.LunarFeatures.Settings or {} end
+local function LAT_Now() return _G.LunarFeatures and _G.LunarFeatures.Now and _G.LunarFeatures.Now() or 0 end
+local function LAT_Clamp(v, lo, hi, fb)
+    v = tonumber(v); if not v or v ~= v then v = fb end
+    return math.max(lo, math.min(hi, v))
+end
+
+-- Yield to the pre-existing aim modes: only one rotation writer at a time.
+local function LAT_OwnerActive()
+    local S = LAT_Config()
+    return S.AimEnabled == true or S.Aim2Enabled == true or S.MortarEnabled == true
+end
+
+_G.LunarAimTouchOwnerActive = LAT_OwnerActive
+
+-- Menus call this when a toggle changes. Save goes through F.MarkDirty.
+function LAT.Set(key, value)
+    if LAT.Toggles[key] ~= nil then
+        LAT.Toggles[key] = value == true or value == 1
+        if _G.LunarFeatures and _G.LunarFeatures.MarkDirty then _G.LunarFeatures.MarkDirty() end
+        return true
+    end
+    return false
+end
+
+function LAT.SetNum(key, value)
+    local d = LAT.CustomTextData
+    if d[key] == nil then return false end
+    local lo, hi = 0, 100
+    if key:find("Bone") then lo, hi = 1, 4
+    elseif key:find("Cond") then lo, hi = 1, 2
+    elseif key:find("Recoil") then lo, hi = 0, 50
+    elseif key:find("Pred") then lo, hi = 0, 100
+    elseif key:find("Speed") or key:find("FOV") then lo, hi = 1, 100
+    elseif key:find("Dist") then lo, hi = 1, 100
+    end
+    d[key] = math.floor(LAT_Clamp(value, lo, hi, d[key]) + 0.5)
+    if _G.LunarFeatures and _G.LunarFeatures.MarkDirty then _G.LunarFeatures.MarkDirty() end
+    return true
+end
+
+function LAT.SetEnabled(v)
+    LAT.Enabled = v == true or v == 1
+    if not LAT.Enabled then
+        _G.XthrlenState.offPitch = 0; _G.XthrlenState.offYaw = 0
+        LAT.LastClock = nil
+    end
+    if _G.LunarFeatures and _G.LunarFeatures.MarkDirty then _G.LunarFeatures.MarkDirty() end
+    return true
+end
+
 
 local function clampAngles(angles)
     if angles.Pitch > 180 then angles.Pitch = angles.Pitch - 360 end
@@ -5194,12 +5388,11 @@ _G.AimTouch = function()
         local pc = player:GetPlayerControllerSafety()
         if not (slua and slua.isValid and slua.isValid(pc)) then return end
         
-                local isFiring = player.bIsWeaponFiring
+        local isFiring = player.bIsWeaponFiring
         local isADS = player.bIsGunADS
-        -- Firing check moved inside each branch. Shotgun has its own
-        -- check below (respects AimTouchSGCond). Hip/scope/sniper also
-        -- check below. This allows shotgun detection even when not firing,
-        -- but actual aim still requires trigger press for safety.
+        -- Both supplied hip/scope modes require firing. Return before scanning,
+        -- weapon classification, visibility checks or imports during idle play.
+        if not isFiring then return end
         
         local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
         if not weapon and type(player.GetCurrentShootWeapon) == "function" then
@@ -5559,6 +5752,206 @@ end
 
 
 _G.LunarFeatures.Aim={Tick=_G.AimTouch}
+-- ============================================================================
+-- LunarAimTouch tick. Reuses existing helpers; yields to other aim owners.
+-- Called from F.Pump (no new timer). See Insertion 3 for the hookup.
+-- ============================================================================
+local function LAT_Run()
+    if not _G.LunarAimTouch.Enabled then return end
+    if LAT_OwnerActive() then return end                    -- no rotation fight
+
+    local player = GameplayData.GetPlayerCharacter()
+    if not (slua and slua.isValid and slua.isValid(player)) then return end
+    local pc = player:GetPlayerControllerSafety()
+    if not (slua and slua.isValid and slua.isValid(pc)) then return end
+    if not player.bIsWeaponFiring then return end           -- fire-gated
+
+    local weapon = player.WeaponManagerComponent
+        and player.WeaponManagerComponent.CurrentWeaponReplicated
+    if not slua.isValid(weapon) and type(player.GetCurrentShootWeapon) == "function" then
+        weapon = player:GetCurrentShootWeapon()
+    end
+
+    local isADS     = player.bIsGunADS
+    local isShotgun = false
+    local isSniper  = false
+    if slua.isValid(weapon) then
+        local wID   = type(weapon.GetWeaponID)   == "function" and weapon:GetWeaponID()   or 0
+        local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
+        if (wID >= 1030000 and wID < 1040000) or wName:find("S686")
+            or wName:find("S1897") or wName:find("S12")
+            or wName:find("DBS")  or wName:find("M1014") then isShotgun = true end
+        if wName:find("Kar98") or wName:find("M24")   or wName:find("AWM")
+            or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR")
+            or wName:find("SKS")   or wName:find("SLR")   or wName:find("Mini")
+            or wName:find("Mk14")  or wName:find("QBU")   or wName:find("Mk12")
+            or wName:find("VSS")   then isSniper = true end
+    end
+
+    local T = _G.LunarAimTouch.Toggles
+    local D = _G.LunarAimTouch.CustomTextData
+    local bone, speed, fov, dist, pred, recoil, vis, igK
+
+    if isShotgun then
+        if not T.SG then return end
+        bone  = D.SGBone;  speed = D.SGSpeed; fov = D.SGFOV; dist = D.SGDist
+        pred  = 0;         recoil = 0
+        vis   = T.SGVisCheck; igK = T.SGIgKnock
+    elseif isADS then
+        if isSniper then
+            if not T.Sniper then return end
+            bone  = D.SniperBone;  speed = D.SniperSpeed; fov = D.SniperFOV
+            dist  = D.SniperDist;  pred  = D.SniperPred;  recoil = 0
+            vis   = true;          igK   = T.SniperIgKnock
+        elseif T.ScopeAll then
+            bone  = D.ScopeBone; speed = D.ScopeSpeed; fov = D.ScopeFOV
+            dist  = D.ScopeDist; pred  = D.ScopePred;  recoil = D.ScopeRecoil
+            vis   = T.VisCheck;  igK   = T.IgKnock
+        else return end
+    else
+        if not T.Hipfire then return end
+        bone  = D.HipBone;  speed = D.HipSpeed; fov = D.HipFOV
+        dist  = D.HipDist;  pred  = 0;          recoil = 0
+        vis   = T.VisCheck; igK   = T.IgKnock
+    end
+
+    local enemies = _G.GetEnemyTargetsFromActors(dist * 100)
+    if not enemies or #enemies == 0 then return end
+
+    local V2 = import("Vector2D"); local GS = import("GameplayStatics")
+    local KM = import("KismetMathLibrary")
+    if not V2 or not GS or not KM then return end
+    local camMgr = GS.GetPlayerCameraManager(pc, 0)
+    if not slua.isValid(camMgr) then return end
+    local camLoc = camMgr:GetCameraLocation()
+    if not camLoc then return end
+
+    local uiUtil = require("client.common.ui_util")
+    local vp = uiUtil and uiUtil.GetViewportSize()
+    if not vp then return end
+    local cx, cy = vp.X * 0.5, vp.Y * 0.5
+    local fovR = (fov / 100.0) * (vp.X / 2.0)
+
+    local boneName = bone == 1 and "head" or bone == 2 and "spine_03"
+        or bone == 3 and "spine_01" or "pelvis"
+
+    local best, bestScore = nil, math.huge
+    for _, target in ipairs(enemies) do
+        if slua.isValid(target) then
+            local skip = false
+            if igK and target.HealthStatus == 1 then skip = true end
+            if not skip and vis and _G.AimTouchVisCache then
+                local tId = type(target.GetUniqueID) == "function"
+                    and target:GetUniqueID() or tostring(target)
+                local c = _G.AimTouchVisCache[tId]
+                local now = LAT_Now()
+                if not c or now < c.time or now - c.time > 0.2 then
+                    local hidden = true
+                    pcall(function()
+                        if pc:LineOfSightTo(target) then hidden = false end
+                    end)
+                    _G.AimTouchVisCache[tId] = { hidden = hidden, time = now }
+                    c = _G.AimTouchVisCache[tId]
+                end
+                if c.hidden then skip = true end
+            end
+            if not skip then
+                local pos = type(target.GetBonePos) == "function"
+                    and target:GetBonePos(boneName, {X=0,Y=0,Z=0}) or nil
+                if (not pos or (pos.X==0 and pos.Y==0 and pos.Z==0))
+                    and type(target.GetSocketLocation) == "function" then
+                    pos = target:GetSocketLocation(boneName)
+                end
+                if (not pos or (pos.X==0 and pos.Y==0 and pos.Z==0))
+                    and type(target.K2_GetActorLocation) == "function" then
+                    pos = target:K2_GetActorLocation()
+                    if pos then
+                        if bone == 1 then pos.Z = pos.Z + 70
+                        elseif bone == 2 then pos.Z = pos.Z + 40
+                        elseif bone == 3 then pos.Z = pos.Z + 20 end
+                    end
+                end
+                if pos and not (pos.X==0 and pos.Y==0 and pos.Z==0) then
+                    local screen = V2()
+                    local ok, out = pc:ProjectWorldLocationToScreen(pos, screen, false)
+                    if out then screen = out end
+                    if ok and screen.X > 0 and screen.Y > 0 then
+                        local dx, dy = screen.X - cx, screen.Y - cy
+                        local d = math.sqrt(dx*dx + dy*dy)
+                        if d <= fovR and d < bestScore then
+                            best, bestScore = target, d
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if not slua.isValid(best) then return end
+
+    local final = type(best.GetBonePos) == "function"
+        and best:GetBonePos(boneName, {X=0,Y=0,Z=0}) or nil
+    if (not final or (final.X==0 and final.Y==0 and final.Z==0))
+        and type(best.GetSocketLocation) == "function" then
+        final = best:GetSocketLocation(boneName)
+    end
+    if (not final or (final.X==0 and final.Y==0 and final.Z==0))
+        and type(best.K2_GetActorLocation) == "function" then
+        final = best:K2_GetActorLocation()
+        if final then
+            if bone == 1 then final.Z = final.Z + 70
+            elseif bone == 2 then final.Z = final.Z + 40
+            elseif bone == 3 then final.Z = final.Z + 20 end
+        end
+    end
+    if not final or (final.X==0 and final.Y==0 and final.Z==0) then return end
+
+    if pred > 0 then
+        pcall(function()
+            local vel = type(best.GetVelocity) == "function" and best:GetVelocity()
+            if vel and (vel.X ~= 0 or vel.Y ~= 0) then
+                local d = player:GetDistanceTo(best) / 100.0
+                local tof = (d / 800.0) * (pred / 50.0)
+                final.X = final.X + vel.X * tof
+                final.Y = final.Y + vel.Y * tof
+            end
+        end)
+    end
+
+    local rot = KM.FindLookAtRotation(camLoc, final)
+    local cur = pc:GetControlRotation()
+    if not rot or not cur then return end
+    local dp = (rot.Pitch - cur.Pitch + 180) % 360 - 180
+    local dy = (rot.Yaw   - cur.Yaw   + 180) % 360 - 180
+
+    local now = LAT_Now()
+    local dt = LAT.LastClock and math.max(0.001, math.min(0.05, now - LAT.LastClock)) or 0.011
+    LAT.LastClock = now
+    local norm = (LAT_Clamp(speed, 100, 120, 100) - 100) / 20.0
+    local strength = 0.02 + 0.48 * norm * norm
+    local alpha = math.min(0.5, 1.0 - (1.0 - strength) ^ (dt / 0.011))
+    local maxRate = 10.0 + 35.0 * norm
+    local stepP, stepY = dp * alpha, dy * alpha
+    local len = math.sqrt(stepP*stepP + stepY*stepY)
+    local lim = maxRate * dt
+    if len > lim then
+        local s = lim / len; stepP = stepP * s; stepY = stepY * s
+    end
+    if recoil > 0 and player.bIsWeaponFiring then
+        stepP = stepP - (recoil / 50.0) * 1.5
+    end
+    local out = { Pitch = cur.Pitch + stepP, Yaw = cur.Yaw + stepY, Roll = 0 }
+    if out.Pitch > 75 then out.Pitch = 75 elseif out.Pitch < -75 then out.Pitch = -75 end
+    pc:SetControlRotation(out, "LunarAimTouch")
+end
+
+-- Expose to the scheduler; called from Insertion 3.
+_G.LunarAimTouchTick = function()
+    local ok, err = pcall(LAT_Run)
+    if not ok and _G.LunarFeatures and _G.LunarFeatures.Error then
+        _G.LunarFeatures.Error("LunarAimTouch", err)
+    end
+end
+
 end
 
 -- Preserve the reference's DrawDyeing/Highlight/IdeaOutline settings and cadence.
@@ -7289,13 +7682,19 @@ do
         if F.Settings.MortarEnabled and (now>=F.Mortar.Due-0.000001 or (F.Mortar.LastTime and now<F.Mortar.LastTime)) then checked(F.Mortar.Tick,"Mortar.Tick") end
 
         if F.Settings.AimEnabled then
-            if now>=F.AimDue-0.000001 or (F.AimLastTick and now<F.AimLastTick) then
-                checked(F.Aim.Tick,"Aim.Render")
-                F.AimLastTick=now
-                F.AimDue=now+((pawn and pawn.bIsWeaponFiring) and 0.011 or 0.05)
-                if not (pawn and pawn.bIsWeaponFiring) then F.AimLastClock=nil end
-            end
-        end
+    if now>=F.AimDue-0.000001 or (F.AimLastTick and now<F.AimLastTick) then
+        checked(F.Aim.Tick,"Aim.Render")
+        F.AimLastTick=now
+        F.AimDue=now+((pawn and pawn.bIsWeaponFiring) and 0.011 or 0.05)
+        if not (pawn and pawn.bIsWeaponFiring) then F.AimLastClock=nil end
+    end
+elseif _G.LunarAimTouch and _G.LunarAimTouch.Enabled and _G.LunarAimTouchTick then
+    if now>=(F.LATAimDue or 0)-0.000001 or (F.LATAimLastClock and now<F.LATAimLastClock) then
+        checked(_G.LunarAimTouchTick, "LunarAimTouch")
+        F.LATAimLastClock = now
+        F.LATAimDue = now + ((pawn and pawn.bIsWeaponFiring) and 0.011 or 0.05)
+    end
+end
         if F.Settings.WallEnabled then checked(F.Wall.Tick,"Wall.Tick",now,pawn,pc) end
         if _G.LexusConfig.IpadView and now>=F.IpadDue then
             checked(g_vipserver_ApplyiPadView,"Ipad")
@@ -7311,6 +7710,7 @@ do
         local o=_G.g_Botmater_ESPOptions
         if o.Name or o.Line or o.Health or o.Distance or o.EnemyCounter then due(F.V1Due) end
         if F.Settings.AimEnabled then due(F.AimDue) end
+            if _G.LunarAimTouch and _G.LunarAimTouch.Enabled and not F.Settings.AimEnabled then due(F.LATAimDue) end
         if F.Settings.Aim2Enabled then nextDelay=math.min(nextDelay,F.Aim2.NextInterval(now))
         elseif next(F.Aim2.Records) then due(F.Aim2RestoreDue) end
         if F.Settings.MortarEnabled then nextDelay=math.min(nextDelay,F.Mortar.NextInterval(now)) end
@@ -7325,6 +7725,7 @@ do
         -- Login callbacks use this existing runner; do not wait for its idle deadline.
         if login and login.NeedsUpdate then F.LoginDue=0 end
         F.V1Due=0;F.AimDue=0
+        if _G.LunarAimTouch and _G.LunarAimTouch.Enabled then F.LATAimDue = 0 end
         if F.Aim2 then F.Aim2.Due=0 end
         if F.Mortar then F.Mortar.Due=0 end
         F.Wall.LastTick=-999
