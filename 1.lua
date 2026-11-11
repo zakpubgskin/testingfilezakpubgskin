@@ -1780,11 +1780,14 @@ do
     Other[#Other+1]={Key="LunarMortarAim",UI=AliasMap.Switcher,Text="Mortar aim",
         GetFunc=function() return featureState().Settings.MortarEnabled end,
         SetFunc=function(c,v) featureState().SetMortar(value(c,v));return true end}
-            Other[#Other+1]={Key="LunarShotgunAimbot",UI=AliasMap.Switcher,
-        Text="Shotgun Aimbot (Auto)",
-        EventType=F.AimSettingsEventType,EventID=F.AimSettingsEventID,
-        GetFunc=function() return _G.XthrlenConfig.AimTouchSG == true end,
-        SetFunc=function(c,v) return featureState().ApplyShotgunPreset(value(c,v)) end}
+        Other[#Other+1]={Key="LunarShotgunAimbot",UI=AliasMap.Switcher,
+    Text="Shotgun Aimbot (Auto)",
+    EventType=F.AimSettingsEventType,EventID=F.AimSettingsEventID,
+    GetFunc=function() 
+        return type(_G.XthrlenConfig)=="table" 
+           and _G.XthrlenConfig.AimTouchSG==true 
+    end,
+    SetFunc=function(c,v) return featureState().ApplyShotgunPreset(value(c,v)) end}
 
     local names={"Pink","White","Cyan","Green","Yellow","Saffron","Red"}
     for i,entry in ipairs({{"WallVisible","Visible color"},{"WallOccluded","Behind-wall color"}}) do
@@ -4763,10 +4766,17 @@ do
                 pcall(function() file:close() end)
                 if readOK and type(payload)=="string" then
                     F.SettingsReadPath=path
-                    for _,key in ipairs({"AimEnabled","WallEnabled","IpadEnabled","Aim2Enabled","MortarEnabled"}) do
+                    for _,key in ipairs({"AimEnabled","WallEnabled","IpadEnabled","Aim2Enabled","MortarEnabled","AimTouchSG"}) do
                         local val=payload:match("%f[%w_]"..key.."%s*=%s*(%a+)")
                         if val=="true" or val=="false" then
-                            if key=="IpadEnabled" then _G.LexusConfig.IpadView=val=="true" else settings[key]=val=="true" end
+                            if key=="IpadEnabled" then 
+    _G.LexusConfig.IpadView=val=="true" 
+elseif key=="AimTouchSG" then
+    _G.XthrlenConfig.AimTouchSG = val=="true"
+    settings.AimTouchSG = val=="true"
+else 
+    settings[key]=val=="true" 
+end
                         end
                     end
                     for _,key in ipairs({"IpadFOV","AimSpeed","AimTarget"}) do
@@ -4806,7 +4816,9 @@ do
     F.Save=function(force)
         if not F.Dirty or not io or not io.open then return end
         local lines={"return {", "  IpadEnabled = "..tostring(_G.LexusConfig.IpadView==true)..","}
-        for _,key in ipairs({"AimEnabled","WallEnabled","Aim2Enabled","MortarEnabled","IpadFOV","AimSpeed","AimTarget","WallVisible","WallOccluded"}) do lines[#lines+1]="  "..key.." = "..tostring(settings[key]).."," end
+        for _,key in ipairs({"AimEnabled","WallEnabled","Aim2Enabled","MortarEnabled","AimTouchSG","IpadFOV","AimSpeed","AimTarget","WallVisible","WallOccluded"}) do 
+    lines[#lines+1]="  "..key.." = "..tostring(settings[key]).."," 
+end
         for _,key in ipairs({"Name","Line","Health","Distance","EnemyCounter"}) do lines[#lines+1]="  V1_"..key.." = "..tostring(_G.g_Botmater_ESPOptions[key]==true).."," end
         for _,key in ipairs({"Name","Line","Box","Health","Distance","Skeleton","Counter"}) do lines[#lines+1]="  V2_"..key.." = "..tostring(_G.g_vipserver_ESPOptions[key]==true).."," end
         lines[#lines+1]="}"
@@ -5182,11 +5194,12 @@ _G.AimTouch = function()
         local pc = player:GetPlayerControllerSafety()
         if not (slua and slua.isValid and slua.isValid(pc)) then return end
         
-        local isFiring = player.bIsWeaponFiring
+                local isFiring = player.bIsWeaponFiring
         local isADS = player.bIsGunADS
-        -- Both supplied hip/scope modes require firing. Return before scanning,
-        -- weapon classification, visibility checks or imports during idle play.
-        if not isFiring then return end
+        -- Firing check moved inside each branch. Shotgun has its own
+        -- check below (respects AimTouchSGCond). Hip/scope/sniper also
+        -- check below. This allows shotgun detection even when not firing,
+        -- but actual aim still requires trigger press for safety.
         
         local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
         if not weapon and type(player.GetCurrentShootWeapon) == "function" then
