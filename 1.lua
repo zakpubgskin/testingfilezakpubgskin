@@ -6060,9 +6060,23 @@ do
     end
 
     -- ============ FIX #5: 60 FPS loop (self-heal + dual-config check) ============
-  local function FastAimbotTickV2()
+    local function FastAimbotTickV2()
         pcall(function()
-            if _G.LexusConfig.AimTouchEnable then
+            local F = _G.LunarFeatures
+            local want = F and F.Settings and (F.Settings.AimEnabled == true) or false
+
+            -- Dual config sync — restart ke baad dono alive
+            _G.LexusConfig = _G.LexusConfig or {}
+            _G.XthrlenConfig = _G.XthrlenConfig or {}
+
+            if _G.LexusConfig.AimTouchEnable ~= want then
+                _G.LexusConfig.AimTouchEnable = want
+            end
+            if _G.XthrlenConfig.AimTouchEnable ~= want then
+                _G.XthrlenConfig.AimTouchEnable = want
+            end
+
+            if _G.LexusConfig.AimTouchEnable or _G.XthrlenConfig.AimTouchEnable then
                 _G.AimTouchV2()
             end
         end)
@@ -6071,12 +6085,6 @@ do
             ticker.AddTimerOnce(0.016, FastAimbotTickV2)
         end
     end
-
-    local okTicker, ticker = pcall(require, "common.time_ticker")
-    if okTicker and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
-    end
-end
 -- ============================================================================
 -- END AIMBOT V2
 -- ============================================================================
@@ -7808,7 +7816,7 @@ do
         end
         if F.Settings.MortarEnabled and (now>=F.Mortar.Due-0.000001 or (F.Mortar.LastTime and now<F.Mortar.LastTime)) then checked(F.Mortar.Tick,"Mortar.Tick") end
 
-        if false and F.Settings.AimEnabled then
+                if F.Settings.AimEnabled and F.Aim and F.Aim.Tick then
             if now>=F.AimDue-0.000001 or (F.AimLastTick and now<F.AimLastTick) then
                 checked(F.Aim.Tick,"Aim.Render")
                 F.AimLastTick=now
