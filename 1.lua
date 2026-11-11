@@ -6080,11 +6080,20 @@ do
                 _G.AimTouchV2()
             end
         end)
-        local okTicker, ticker = pcall(require, "common.time_ticker")
+                local okTicker, ticker = pcall(require, "common.time_ticker")
         if okTicker and ticker and ticker.AddTimerOnce then
             ticker.AddTimerOnce(0.016, FastAimbotTickV2)
         end
     end
+
+    -- Bootstrap: start the 60 FPS chain
+    local okTicker, ticker = pcall(require, "common.time_ticker")
+    if okTicker and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(0.5, FastAimbotTickV2)
+    end
+end  -- ✅ AIMBOT V2 do-block END (was MISSING)
+-- ============================================================================
+-- END AIMBOT V2
 -- ============================================================================
 -- END AIMBOT V2
 -- ============================================================================
