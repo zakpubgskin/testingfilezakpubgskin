@@ -6060,23 +6060,9 @@ do
     end
 
     -- ============ FIX #5: 60 FPS loop (self-heal + dual-config check) ============
-    local function FastAimbotTickV2()
+  local function FastAimbotTickV2()
         pcall(function()
-            local F = _G.LunarFeatures
-            local want = F and F.Settings and (F.Settings.AimEnabled == true) or false
-
-            -- Dual config sync — restart ke baad dono alive rahe
-            _G.LexusConfig = _G.LexusConfig or {}
-            _G.XthrlenConfig = _G.XthrlenConfig or {}
-
-            if _G.LexusConfig.AimTouchEnable ~= want then
-                _G.LexusConfig.AimTouchEnable = want
-            end
-            if _G.XthrlenConfig.AimTouchEnable ~= want then
-                _G.XthrlenConfig.AimTouchEnable = want
-            end
-
-            if _G.LexusConfig.AimTouchEnable or _G.XthrlenConfig.AimTouchEnable then
+            if _G.LexusConfig.AimTouchEnable then
                 _G.AimTouchV2()
             end
         end)
